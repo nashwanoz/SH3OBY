@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://android.com"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:padding="24dp"
+    android:background="#FFFFFF"> <!-- خلفية بيضاء مريحة للعين -->
+
+    <!-- النص الأول: اسم السوبر ماركت (بخط كبير وعريض) -->
+    <TextView
+        android:id="@+id/textTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="الشعوبي ماركت"
+        android:textSize="32sp" 
+        android:textStyle="bold"
+        android:textColor="#1A237E" 
+        android:layout_marginBottom="8dp" /> <!-- مسافة صغيرة تحت الاسم الرئيسي -->
+
+    <!-- النص الثاني: الشعار اللفظي (بخط أصغر ولون هادئ) -->
+    <TextView
+        android:id="@+id/textSubtitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="متعة التسوق"
+        android:textSize="18sp"
+        android:textStyle="normal"
+        android:textColor="#757575" /> <!-- لون رمادي أنيق للشعار -->
+
+</LinearLayout>
