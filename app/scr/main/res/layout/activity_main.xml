@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://android.com"
+    xmlns:app="http://android.com"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/white"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp"
+        android:gravity="center_horizontal">
+
+        <!-- الترويسة: الشعوبي ماركت ومتعة التسوق -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="الشعـــوبي ماركت"
+            android:textSize="28sp"
+            android:textStyle="bold"
+            android:textColor="@color/purple_700"
+            android:layout_marginTop="16dp"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="متعة التسوق"
+            android:textSize="16sp"
+            android:textColor="@color/gray"
+            android:layout_marginBottom="24dp"/>
+
+        <!-- جديد الشعوبي -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="جديد الشعوبي"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="@color/black"
+            android:gravity="right"
+            android:layout_marginBottom="8dp"/>
+
+        <!-- شريط الصور المتحرك (مؤقتاً يعرض الصورة snf) -->
+        <ImageView
+            android:id="@+id/imageSlider"
+            android:layout_width="match_parent"
+            android:layout_height="180dp"
+            android:scaleType="centerCrop"
+            android:src="@drawable/snf"
+            android:background="@color/light_gray"
+            android:layout_marginBottom="20dp"/>
+
+        <!-- مربع البحث -->
+        <EditText
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:hint="ابحث عن المنتجات..."
+            android:background="@color/light_gray"
+            android:padding="12dp"
+            android:gravity="right|center_vertical"
+            android:inputType="text"
+            android:layout_marginBottom="24dp"/>
+
+        <!-- تصفح أقسام الشعوبي ماركت -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="تصفح اقسام الشعوبي ماركت"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="@color/black"
+            android:gravity="right"
+            android:layout_marginBottom="16dp"/>
+
+        <!-- مساحة مرنة لدفع المحتويات السفلية لآخر الشاشة -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+        <!-- تذييل الصفحة: طرق الدفع وحقوق الملكية -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:layout_marginTop="24dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="نقبل الدفع عن طريق جوالي وجيب"
+                android:textSize="14sp"
+                android:textColor="@color/black"
+                android:layout_marginBottom="12dp"/>
+
+            <!-- مربعات عرض شعارات الدفع (جيب وجوالي) -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="24dp">
+
+                <!-- مربع شعار جوالي -->
+                <ImageView
+                    android:layout_width="80dp"
+                    android:layout_height="50dp"
+                    android:src="@drawable/jawali"
+                    android:scaleType="fitCenter"
+                    android:background="@color/light_gray"
+                    android:padding="4dp"
+                    android:layout_marginEnd="8dp"/>
+
+                <!-- مربع شعار جيب -->
+                <ImageView
+                    android:layout_width="80dp"
+                    android:layout_height="50dp"
+                    android:src="@drawable/jaib"
+                    android:scaleType="fitCenter"
+                    android:background="@color/light_gray"
+                    android:padding="4dp"
+                    android:layout_marginStart="8dp"/>
+            </LinearLayout>
+
+            <!-- جميع الحقوق محفوظة -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="جميع الحقوق محفوظة\nsmart_link"
+                android:textSize="12sp"
+                android:textColor="@color/gray"
+                android:gravity="center"/>
+        </LinearLayout>
+
+    </LinearLayout>
+</ScrollView>
