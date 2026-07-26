@@ -1,11 +1,9 @@
-package com.smart.link;
+package com.smart.link; // الحزمة القديمة كما هي دون تغيير
 
 import android.os.Bundle;
 import android.widget.EditText;
 import android.widget.ImageView;
 import androidx.appcompat.app.AppCompatActivity;
-import com.bumptech.glide.Glide;
-import com.bumptech.glide.load.engine.DiskCacheStrategy;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -15,20 +13,10 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+        setContentView(R.layout.activity_main); // قراءة واجهة السوبرماركت الجديدة
 
-        // ربط عناصر واجهة السوبرماركت البرمجية
+        // ربط العناصر الأساسية الموجودة فعلياً في التصميم لمنع الانهيار
         editSearch = findViewById(R.id.editSearch);
         imageSlider = findViewById(R.id.imageSlider);
-
-        // تشغيل الصورة المتحركة التجريبية مؤقتاً وتفعيل تخزين الكاش
-        String sampleImageUrl = "https://placeholder.com";
-        
-        Glide.with(this)
-                .load(sampleImageUrl)
-                .diskCacheStrategy(DiskCacheStrategy.ALL) // تخزين الصورة في ذاكرة الهاتف لعدم استهلاك الإنترنت
-                .placeholder(android.R.drawable.ic_menu_gallery)
-                .error(android.R.drawable.stat_notify_error)
-                .into(imageSlider);
     }
 }
