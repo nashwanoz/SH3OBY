@@ -13,8 +13,8 @@ public class MainActivity extends AppCompatActivity {
     private ImageView imageSlider;
 
     @Override
-    protected void Bundle savedInstanceState) {
-        super.Bundle(savedInstanceState);
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
         // ربط عناصر واجهة السوبرماركت البرمجية
@@ -22,7 +22,6 @@ public class MainActivity extends AppCompatActivity {
         imageSlider = findViewById(R.id.imageSlider);
 
         // تشغيل الصورة المتحركة التجريبية مؤقتاً وتفعيل تخزين الكاش
-        // ملاحظة: يمكنك استبدال الرابط أدناه بأي رابط صورة حقيقية تريدها
         String sampleImageUrl = "https://placeholder.com";
         
         Glide.with(this)
