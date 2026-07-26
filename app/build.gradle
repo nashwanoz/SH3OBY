@@ -33,13 +33,13 @@ android {
 }
 
 dependencies {
-    // مكتبات أندرويد الأساسية والواجهات
-    implementation 'androidx.core:core-ktx:1.12.0'
-    implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation 'com.google.android.material:material:1.11.0'
-    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    // مكتبات أندرويد المستقرة والحديثة المكتوبة بالصيغة الصحيحة
+    implementation("androidx.core:core-ktx:1.12.0")
+    implementation("androidx.appcompat:appcompat:1.6.1")
+    implementation("com.google.android.material:material:1.11.0")
+    implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     
-    // مكتبة اختيارية وممتازة لتشغيل الصور المتحركة والمستديرة بسهولة
-    implementation 'com.github.bumptech.glide:glide:4.16.0'
-    annotationProcessor 'com.github.bumptech.glide:compiler:4.16.0'
+    // مكتبة جلايد لعرض الصور بشكل حديث
+    implementation("com.github.bumptech.glide:glide:4.16.0")
+    annotationProcessor("com.github.bumptech.glide:compiler:4.16.0")
 }
