@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.sh3oby.link">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <!-- السماح بالاتصال بالإنترنت لعرض الصور والأصناف لاحقاً -->
     <uses-permission android:name="android.permission.INTERNET" />
@@ -14,7 +13,7 @@
         
         <!-- الواجهة الرئيسية للتطبيق -->
         <activity
-            android:name=".MainActivity"
+            android:name="com.sh3oby.link.MainActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
