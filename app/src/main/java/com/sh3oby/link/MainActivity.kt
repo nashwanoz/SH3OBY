@@ -5,7 +5,7 @@ import androidx.appcompat.app.AppCompatActivity
 
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.init(savedInstanceState)
+        super.onCreate(savedInstanceState)
         // ربط ملف البرمجة بواجهة التصميم activity_main
         setContentView(R.layout.activity_main)
     }
