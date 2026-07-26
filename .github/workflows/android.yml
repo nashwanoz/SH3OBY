@@ -1,10 +1,10 @@
-name: Android CI (Smart Link Build)
+name: Android CI
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: [ "main" ]
   pull_request:
-    branches: [ "main", "master" ]
+    branches: [ "main" ]
 
 jobs:
   build:
@@ -19,20 +19,16 @@ jobs:
       with:
         java-version: '17'
         distribution: 'temurin'
+        cache: gradle
 
-    # إجبار السيرفر على استخدام إصدار Gradle 8.4 المستقر والمتوافق
-    - name: Setup Gradle
-      uses: gradle/actions/setup-gradle@v3
-      with:
-        gradle-version: '8.4'
-        cache-disabled: true
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
 
-    # تنظيف المشروع وبنائه بشكل نظيف لتفادي أخطاء الـ Cache
-    - name: Clean and Build with Gradle
-      run: gradle clean assembleDebug
+    - name: Build with Gradle
+      run: ./gradlew assembleDebug
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: SmartLink-SMS-Gateway
+        name: sh3oby-market-app
         path: app/build/outputs/apk/debug/app-debug.apk
