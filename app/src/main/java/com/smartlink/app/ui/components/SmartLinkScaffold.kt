@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.SpaceDashboard
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -30,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.smartlink.app.ui.AppRoute
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SmartLinkShell(
     navController: NavHostController,
