@@ -8,7 +8,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.Payments
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -26,8 +25,7 @@ fun MoreScreen(navController: NavHostController) {
     val actions = listOf(
         MoreAction("الحركات المالية", AppRoute.Finance, Icons.Default.Payments),
         MoreAction("التقارير", AppRoute.Reports, Icons.Default.Assessment),
-        MoreAction("المزامنة والرسائل", AppRoute.Sync, Icons.Default.CloudSync),
-        MoreAction("تهيئة النظام", AppRoute.More, Icons.Default.Settings)
+        MoreAction("المزامنة والرسائل", AppRoute.Sync, Icons.Default.CloudSync)
     )
     Column(
         modifier = Modifier.padding(20.dp),

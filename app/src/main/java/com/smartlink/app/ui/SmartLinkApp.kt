@@ -4,12 +4,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -39,36 +38,36 @@ object AppRoute {
 @Composable
 fun SmartLinkApp() {
     val navController = rememberNavController()
-    var isLoggedIn by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val store = remember(context) { SmartLinkStore(context.applicationContext) }
 
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
         NavHost(
             navController = navController,
-            startDestination = if (isLoggedIn) AppRoute.Dashboard else AppRoute.Login,
+            startDestination = AppRoute.Dashboard,
             modifier = Modifier.fillMaxSize()
         ) {
             composable(AppRoute.Login) {
                 LoginScreen(onLogin = {
-                    isLoggedIn = true
                     navController.navigate(AppRoute.Dashboard) {
                         popUpTo(AppRoute.Login) { inclusive = true }
                     }
                 })
             }
             composable(AppRoute.Dashboard) {
-                AppShell(navController, AppRoute.Dashboard) { DashboardScreen() }
+                AppShell(navController, AppRoute.Dashboard) { DashboardScreen(store) }
             }
             composable(AppRoute.Inventory) {
-                AppShell(navController, AppRoute.Inventory) { InventoryScreen() }
+                AppShell(navController, AppRoute.Inventory) { InventoryScreen(store) }
             }
             composable(AppRoute.Invoices) {
-                AppShell(navController, AppRoute.Invoices) { InvoiceScreen() }
+                AppShell(navController, AppRoute.Invoices) { InvoiceScreen(store) }
             }
             composable(AppRoute.Customers) {
-                AppShell(navController, AppRoute.Customers) { CustomersScreen() }
+                AppShell(navController, AppRoute.Customers) { CustomersScreen(store) }
             }
             composable(AppRoute.Finance) {
-                AppShell(navController, AppRoute.Finance) { FinanceScreen() }
+                AppShell(navController, AppRoute.Finance) { FinanceScreen(store) }
             }
             composable(AppRoute.Reports) {
                 AppShell(navController, AppRoute.Reports) { ReportsScreen() }
