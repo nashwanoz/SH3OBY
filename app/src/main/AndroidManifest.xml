@@ -1,0 +1,15 @@
+<manifest package="com.smartlink.app"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application
+        android:label="برنامج سمارت لينك"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round">
+        <activity android:name="com.smartlink.app.MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

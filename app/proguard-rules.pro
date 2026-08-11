@@ -1,0 +1,1 @@
+# Smart Link release rules are intentionally empty for the first UI build.
