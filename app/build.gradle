@@ -1,0 +1,46 @@
+apply plugin: 'com.android.application'
+apply plugin: 'kotlin-android'
+apply plugin: 'kotlin-kapt'
+apply plugin: 'com.google.gms.google-services'
+
+android {
+    compileSdkVersion 34
+    defaultConfig {
+        applicationId "net.khamer.link"
+        minSdkVersion 24
+        targetSdkVersion 34
+        versionCode 1
+        versionName "0.1"
+    }
+    buildFeatures {
+        compose true
+    }
+    composeOptions {
+        kotlinCompilerExtensionVersion '1.5.3'
+    }
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+}
+
+dependencies {
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:1.8.22"
+    implementation 'androidx.core:core-ktx:1.12.0'
+    implementation 'androidx.activity:activity-compose:1.8.0'
+    implementation 'androidx.compose.ui:ui:1.5.3'
+    implementation 'androidx.compose.material3:material3:1.2.0-alpha04'
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.6.2'
+    implementation 'androidx.lifecycle:lifecycle-viewmodel-compose:2.6.2'
+
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
+
+    implementation 'androidx.room:room-runtime:2.6.1'
+    kapt 'androidx.room:room-compiler:2.6.1'
+    implementation 'androidx.room:room-ktx:2.6.1'
+
+    // Firebase BOM and Firestore
+    implementation platform('com.google.firebase:firebase-bom:32.2.0')
+    implementation 'com.google.firebase:firebase-firestore-ktx'
+
+    implementation 'com.google.accompanist:accompanist-systemuicontroller:0.31.5-beta'
+}
