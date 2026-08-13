@@ -15,6 +15,11 @@ data class SaleResult(
     val message: String
 )
 
+data class BondResult(
+    val bond: FinancialBondEntity,
+    val customer: CustomerEntity
+)
+
 class AppRepository(private val context: Context) {
     private val db = AppDatabase.get(context)
     private val preferences = context.getSharedPreferences("khamr_net_device", Context.MODE_PRIVATE)
@@ -120,8 +125,69 @@ class AppRepository(private val context: Context) {
         }
     }
 
+    suspend fun updateProduct(product: ProductEntity) {
+        db.products().update(
+            id = product.id,
+            name = product.name.trim(),
+            barcode = product.barcode.trim(),
+            unitName = product.unitName.trim(),
+            price = product.price,
+            caseUnitName = product.caseUnitName.trim(),
+            caseQuantity = product.caseQuantity,
+            casePrice = product.casePrice
+        )
+    }
+
+    suspend fun deleteProduct(productId: Long): Result<Unit> = suspendRunCatching {
+        db.withTransaction {
+            check(!db.invoices().hasProductMovement(productId) && !db.transfers().hasProductMovement(productId)) {
+                "لا يمكن حذف الصنف بعد تسجيل حركة عليه"
+            }
+            db.stock().deleteForProduct(productId)
+            db.products().delete(productId)
+        }
+    }
+
     suspend fun addCustomer(name: String, mobile: String): Long =
         db.customers().insert(CustomerEntity(name = name.trim(), mobile = mobile.trim()))
+
+    suspend fun customerLastMovements(): Map<Long, Long> {
+        val movements = db.invoices().customerMovementTimes() + db.bonds().customerMovementTimes()
+        return movements
+            .filter { it.lastMovementAt != null }
+            .groupBy { it.customerId }
+            .mapValues { (_, values) -> values.maxOf { it.lastMovementAt!! } }
+    }
+
+    suspend fun customerStatement(customerId: Long): List<CustomerStatementRow> {
+        val invoices = db.invoices().forCustomer(customerId)
+        val bonds = db.bonds().forCustomer(customerId)
+        val movements = (
+            invoices.map {
+                CustomerStatementRow(
+                    createdAt = it.createdAt,
+                    reference = it.id,
+                    type = "فاتورة ${it.paymentType}",
+                    amount = it.total,
+                    balanceAfter = 0.0
+                )
+            } + bonds.map {
+                CustomerStatementRow(
+                    createdAt = it.createdAt,
+                    reference = it.id,
+                    type = if (it.type == "قبض") "سند قبض" else "سند صرف",
+                    amount = if (it.type == "قبض") -it.amount else it.amount,
+                    balanceAfter = 0.0
+                )
+            }
+        ).sortedBy { it.createdAt }
+
+        var balance = 0.0
+        return movements.map { movement ->
+            balance += movement.amount
+            movement.copy(balanceAfter = balance)
+        }
+    }
 
     suspend fun transferStock(adminId: Long, cashierId: Long, productId: Long, quantity: Int): Result<Unit> {
         if (quantity <= 0) return Result.failure(IllegalArgumentException("أدخل كمية صحيحة"))
@@ -209,13 +275,16 @@ class AppRepository(private val context: Context) {
         type: String,
         amount: Double,
         note: String
-    ): Result<Unit> = suspendRunCatching {
+    ): Result<BondResult> = suspendRunCatching {
         require(amount > 0) { "أدخل مبلغًا صحيحًا" }
         db.withTransaction {
             val signedAmount = if (type == "قبض") -amount else amount
             db.customers().adjustBalance(customerId, signedAmount)
-            db.bonds().insert(
-                FinancialBondEntity(newId("bond", userId), userId, customerId, type, amount, note)
+            val bond = FinancialBondEntity(newId("bond", userId), userId, customerId, type, amount, note)
+            db.bonds().insert(bond)
+            BondResult(
+                bond = bond,
+                customer = db.customers().find(customerId) ?: error("العميل غير موجود")
             )
         }
     }
