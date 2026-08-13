@@ -320,6 +320,24 @@ class AppRepository(private val context: Context) {
         return db.invoices().totalSince(userId, start) to db.settlements().carriedDifference(userId)
     }
 
+    suspend fun testFirebaseConnection(): Result<Unit> = suspendRunCatching {
+        val app = FirebaseApp.getApps(context).firstOrNull()
+            ?: FirebaseApp.initializeApp(context)
+            ?: error("ملف google-services.json غير موجود أو لم تتم تهيئة Firebase")
+        val testRef = FirebaseDatabase.getInstance(app)
+            .reference
+            .child("connection_tests")
+            .child(deviceId)
+        Tasks.await(
+            testRef.setValue(
+                mapOf(
+                    "ok" to true,
+                    "testedAt" to System.currentTimeMillis()
+                )
+            )
+        )
+    }
+
     suspend fun syncPending(): Boolean {
         val app = try {
             if (FirebaseApp.getApps(context).isEmpty()) FirebaseApp.initializeApp(context)
