@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Primary theme colors -->
+    <color name="md_theme_light_primary">#2E7D32</color>
+    <color name="md_theme_light_onPrimary">#FFFFFF</color>
+    <color name="md_theme_light_primaryContainer">#C8E6C9</color>
+    <color name="md_theme_light_onPrimaryContainer">#002202</color>
+
+    <color name="md_theme_light_secondary">#FFC107</color>
+    <color name="md_theme_light_onSecondary">#000000</color>
+    <color name="md_theme_light_tertiary">#4CAF50</color>
+
+    <color name="md_theme_light_background">#F5F5F5</color>
+    <color name="md_theme_light_surface">#FFFFFF</color>
+    <color name="md_theme_light_onBackground">#000000</color>
+    <color name="md_theme_light_onSurface">#000000</color>
+
+    <!-- Dark variants (basic) -->
+    <color name="md_theme_dark_primary">#66BB6A</color>
+    <color name="md_theme_dark_onPrimary">#000000</color>
+    <color name="md_theme_dark_background">#121212</color>
+    <color name="md_theme_dark_surface">#1E1E1E</color>
+
+    <!-- Accent / error -->
+    <color name="md_theme_light_error">#B00020</color>
+    <color name="md_theme_light_onError">#FFFFFF</color>
+</resources>
