@@ -1,0 +1,3 @@
+name=settings.gradle
+rootProject.name = "KhamrNet"
+include ':app'
