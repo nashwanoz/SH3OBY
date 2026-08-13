@@ -4,7 +4,9 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.khamrnet.app.data.AppRepository
+import com.khamrnet.app.data.CustomerStatementRow
 import com.khamrnet.app.data.CustomerEntity
+import com.khamrnet.app.data.FinancialBondEntity
 import com.khamrnet.app.data.ProductEntity
 import com.khamrnet.app.data.UserEntity
 import com.khamrnet.app.data.InvoiceEntity
@@ -20,15 +22,28 @@ data class DashboardStats(
     val carriedDifference: Double = 0.0
 )
 
+data class SaleReceipt(
+    val invoice: InvoiceEntity,
+    val customer: CustomerEntity?
+)
+
+data class BondReceipt(
+    val bond: FinancialBondEntity,
+    val customer: CustomerEntity
+)
+
 data class AppUiState(
     val ready: Boolean = false,
     val user: UserEntity? = null,
     val products: List<ProductEntity> = emptyList(),
     val customers: List<CustomerEntity> = emptyList(),
     val users: List<UserEntity> = emptyList(),
+    val customerLastMovement: Map<Long, Long> = emptyMap(),
     val stock: Map<Long, Int> = emptyMap(),
     val invoices: List<InvoiceEntity> = emptyList(),
     val stats: DashboardStats = DashboardStats(),
+    val saleReceipt: SaleReceipt? = null,
+    val bondReceipt: BondReceipt? = null,
     val message: String? = null,
     val error: String? = null
 )
@@ -49,7 +64,10 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
         viewModelScope.launch {
             repository.observeCustomers().collectLatest { customers ->
-                _state.value = _state.value.copy(customers = customers)
+                _state.value = _state.value.copy(
+                    customers = customers,
+                    customerLastMovement = repository.customerLastMovements()
+                )
             }
         }
         viewModelScope.launch {
@@ -122,6 +140,22 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun updateProduct(product: ProductEntity) {
+        viewModelScope.launch {
+            suspendRunCatching { repository.updateProduct(product) }
+                .onSuccess { _state.value = _state.value.copy(message = "تم تعديل بيانات الصنف") }
+                .onFailure { _state.value = _state.value.copy(error = it.message ?: "تعذر تعديل الصنف") }
+        }
+    }
+
+    fun deleteProduct(productId: Long) {
+        viewModelScope.launch {
+            repository.deleteProduct(productId)
+                .onSuccess { _state.value = _state.value.copy(message = "تم حذف الصنف") }
+                .onFailure { _state.value = _state.value.copy(error = it.message ?: "لا يمكن حذف الصنف") }
+        }
+    }
+
     fun addCustomer(name: String, mobile: String) {
         viewModelScope.launch {
             suspendRunCatching { repository.addCustomer(name, mobile) }
@@ -144,7 +178,11 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             repository.recordSale(user, product, unit, quantity, customerId, credit)
                 .onSuccess {
-                    _state.value = _state.value.copy(message = it.message)
+                    val customer = _state.value.customers.firstOrNull { item -> item.id == it.invoice.customerId }
+                    _state.value = _state.value.copy(
+                        message = null,
+                        saleReceipt = SaleReceipt(it.invoice, customer)
+                    )
                     refreshStats(user.id)
                 }
                 .onFailure { _state.value = _state.value.copy(error = it.message ?: "تعذر حفظ الفاتورة") }
@@ -155,9 +193,30 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         val user = _state.value.user ?: return
         viewModelScope.launch {
             repository.recordBond(user.id, customerId, type, amount, note)
-                .onSuccess { _state.value = _state.value.copy(message = "تم حفظ السند وتحديث رصيد العميل") }
+                .onSuccess {
+                    _state.value = _state.value.copy(
+                        message = null,
+                        bondReceipt = BondReceipt(it.bond, it.customer)
+                    )
+                }
                 .onFailure { _state.value = _state.value.copy(error = it.message ?: "تعذر حفظ السند") }
         }
+    }
+
+    fun loadCustomerStatement(customerId: Long, onLoaded: (List<CustomerStatementRow>) -> Unit) {
+        viewModelScope.launch {
+            suspendRunCatching { repository.customerStatement(customerId) }
+                .onSuccess(onLoaded)
+                .onFailure { _state.value = _state.value.copy(error = it.message ?: "تعذر إنشاء كشف الحساب") }
+        }
+    }
+
+    fun clearSaleReceipt() {
+        _state.value = _state.value.copy(saleReceipt = null)
+    }
+
+    fun clearBondReceipt() {
+        _state.value = _state.value.copy(bondReceipt = null)
     }
 
     fun settle(cashierId: Long, actual: Double) {
