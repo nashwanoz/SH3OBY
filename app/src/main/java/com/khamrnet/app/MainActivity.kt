@@ -1,5 +1,6 @@
 package com.khamrnet.app
 
+import android.app.Activity
 import android.Manifest
 import android.bluetooth.BluetoothDevice
 import android.content.pm.PackageManager
@@ -7,10 +8,12 @@ import android.os.Bundle
 import android.os.Build
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -22,6 +25,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -39,6 +43,8 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.People
@@ -81,12 +87,22 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardActions
+import androidx.compose.ui.text.input.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -130,7 +146,7 @@ enum class AppSection(
 ) {
     HOME("الرئيسية", Icons.Default.Assessment),
     POS("نقطة البيع", Icons.Default.PointOfSale),
-    PRODUCTS("المنتجات", Icons.Default.Inventory),
+    PRODUCTS("بيانات الأصناف", Icons.Default.Inventory),
     USERS("المستخدمون", Icons.Default.People),
     TRANSFERS("تحويل مخزون", Icons.Default.SwapHoriz),
     CUSTOMERS("العملاء", Icons.Default.People),
@@ -142,6 +158,21 @@ enum class AppSection(
 private fun KhamrApp(viewModel: AppViewModel) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
+    var showExitConfirmation by rememberSaveable { mutableStateOf(false) }
+    var lastBackPressAt by rememberSaveable { mutableStateOf(0L) }
+
+    BackHandler(enabled = !showExitConfirmation) {
+        val now = System.currentTimeMillis()
+        if (now - lastBackPressAt < 2_000L) {
+            lastBackPressAt = 0L
+            showExitConfirmation = true
+        } else {
+            lastBackPressAt = now
+            Toast.makeText(context, "اضغط رجوع مرة أخرى للخروج", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     LaunchedEffect(state.message, state.error) {
         (state.message ?: state.error)?.let { snackbarHostState.showSnackbar(it) }
         viewModel.clearMessage()
@@ -157,17 +188,41 @@ private fun KhamrApp(viewModel: AppViewModel) {
     state.bondReceipt?.let { receipt ->
         BondReceiptDialog(receipt, viewModel::clearBondReceipt)
     }
+    if (showExitConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showExitConfirmation = false },
+            title = { Text("الخروج من التطبيق") },
+            text = { Text("هل تريد الخروج من التطبيق؟") },
+            confirmButton = {
+                TextButton(onClick = { (context as? Activity)?.finish() }) {
+                    Text("خروج")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showExitConfirmation = false }) {
+                    Text("إلغاء")
+                }
+            }
+        )
+    }
 }
 
 @Composable
 private fun LoadingScreen() {
     Box(
-        Modifier.fillMaxSize().background(
+        Modifier.fillMaxSize().imePadding().background(
             Brush.verticalGradient(listOf(Color(0xFF102A43), Color(0xFF0F766E)))
         ),
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Image(
+                painter = painterResource(R.drawable.khamernet_logo),
+                contentDescription = "شعار خمر نت",
+                modifier = Modifier.size(104.dp),
+                contentScale = ContentScale.Fit
+            )
+            Spacer(Modifier.height(16.dp))
             Text("خمر نت", color = Color.White, fontSize = 42.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(10.dp))
             Text("جاري تجهيز النظام محليًا…", color = Color.White.copy(alpha = .8f))
@@ -181,53 +236,95 @@ private fun LoadingScreen() {
 private fun LoginScreen(state: AppUiState, viewModel: AppViewModel) {
     var username by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
+    val focusManager = LocalFocusManager.current
+    val passwordFocusRequester = remember { FocusRequester() }
+    val login = {
+        focusManager.clearFocus()
+        viewModel.login(username, password)
+    }
     Box(
-        Modifier.fillMaxSize().background(
+        Modifier.fillMaxSize().imePadding().background(
             Brush.verticalGradient(listOf(Color(0xFF102A43), Color(0xFF0F766E)))
         ),
         contentAlignment = Alignment.Center
     ) {
-        Card(
-            modifier = Modifier.fillMaxWidth(.9f),
-            shape = RoundedCornerShape(28.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(18.dp)
+                .verticalScroll(rememberScrollState()),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Column(
-                Modifier.padding(26.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+            Image(
+                painter = painterResource(R.drawable.khamernet_logo),
+                contentDescription = "شعار خمر نت",
+                modifier = Modifier.size(112.dp),
+                contentScale = ContentScale.Fit
+            )
+            Spacer(Modifier.height(12.dp))
+            Card(
+                modifier = Modifier.fillMaxWidth(.94f),
+                shape = RoundedCornerShape(28.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White)
             ) {
-                Text("خمر نت", fontSize = 36.sp, fontWeight = FontWeight.Bold, color = Color(0xFF102A43))
-                Text("نظام المبيعات والمخزون", color = Color(0xFF0F766E))
-                Spacer(Modifier.height(28.dp))
-                OutlinedTextField(
-                    value = username,
-                    onValueChange = { username = it },
-                    label = { Text("اسم المستخدم") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-                Spacer(Modifier.height(12.dp))
-                OutlinedTextField(
-                    value = password,
-                    onValueChange = { password = it },
-                    label = { Text("كلمة المرور") },
-                    visualTransformation = PasswordVisualTransformation(),
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-                Spacer(Modifier.height(22.dp))
-                Button(
-                    onClick = { viewModel.login(username, password) },
-                    modifier = Modifier.fillMaxWidth().height(52.dp),
-                    enabled = username.isNotBlank() && password.isNotBlank()
-                ) { Text("دخول") }
-                Spacer(Modifier.height(18.dp))
-                Text("الحساب الافتراضي: 1 / 1", color = Color.Gray, fontSize = 12.sp)
-                (state.error)?.let {
+                Column(
+                    Modifier.padding(26.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text("خمر نت", fontSize = 36.sp, fontWeight = FontWeight.Bold, color = Color(0xFF102A43))
+                    Text("نظام المبيعات والمخزون", color = Color(0xFF0F766E))
+                    Spacer(Modifier.height(28.dp))
+                    OutlinedTextField(
+                        value = username,
+                        onValueChange = { username = it },
+                        label = { Text("اسم المستخدم") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Number,
+                            imeAction = ImeAction.Next
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onNext = { passwordFocusRequester.requestFocus() },
+                            onDone = { passwordFocusRequester.requestFocus() }
+                        )
+                    )
                     Spacer(Modifier.height(12.dp))
-                    Text(it, color = MaterialTheme.colorScheme.error)
+                    OutlinedTextField(
+                        value = password,
+                        onValueChange = { password = it },
+                        label = { Text("كلمة المرور") },
+                        visualTransformation = PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth().focusRequester(passwordFocusRequester),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Password,
+                            imeAction = ImeAction.Done
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onDone = { if (username.isNotBlank() && password.isNotBlank()) login() }
+                        )
+                    )
+                    Spacer(Modifier.height(22.dp))
+                    Button(
+                        onClick = login,
+                        modifier = Modifier.fillMaxWidth().height(52.dp),
+                        enabled = username.isNotBlank() && password.isNotBlank()
+                    ) { Text("دخول") }
+                    Spacer(Modifier.height(18.dp))
+                    Text("الحساب الافتراضي: 1 / 1", color = Color.Gray, fontSize = 12.sp)
+                    state.error?.let {
+                        Spacer(Modifier.height(12.dp))
+                        Text(it, color = MaterialTheme.colorScheme.error)
+                    }
                 }
             }
+            Spacer(Modifier.height(18.dp))
+            Text(
+                "جميع الحقوق محفوظة Smart Link 2026",
+                color = Color.White.copy(alpha = .86f),
+                fontSize = 12.sp
+            )
         }
     }
 }
@@ -540,33 +637,64 @@ private fun ProductsScreen(state: AppUiState, viewModel: AppViewModel) {
     var showAdd by remember { mutableStateOf(false) }
     var editingProduct by remember { mutableStateOf<ProductEntity?>(null) }
     Column(Modifier.fillMaxSize().padding(16.dp)) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Column {
-                Text("كتالوج المنتجات", fontSize = 22.sp, fontWeight = FontWeight.Bold)
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text("بيانات الأصناف", fontSize = 22.sp, fontWeight = FontWeight.Bold)
                 Text("الأسعار تُقفل على الكاشير حسب إعدادات المدير", color = Color.Gray, fontSize = 12.sp)
+            }
+            OutlinedButton(
+                onClick = viewModel::testFirebaseConnection,
+                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)
+            ) {
+                Text("اختبار Firebase", fontSize = 11.sp)
             }
             FloatingActionButton(onClick = { showAdd = true }) { Icon(Icons.Default.Add, "إضافة") }
         }
-        Spacer(Modifier.height(14.dp))
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Spacer(Modifier.height(10.dp))
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(2),
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(bottom = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             items(state.products) { product ->
-                Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
+                Card(
+                    Modifier.fillMaxWidth().height(118.dp),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
                     Row(
-                        Modifier.padding(15.dp).fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
+                        Modifier.padding(10.dp).fillMaxSize(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column {
-                            Text(product.name, fontWeight = FontWeight.Bold, fontSize = 17.sp)
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                product.name,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 15.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
                             Text("باركود: ${product.barcode.ifBlank { "غير محدد" }}", color = Color.Gray, fontSize = 12.sp)
-                        }
-                        Column(horizontalAlignment = Alignment.End) {
                             Text("${"%.2f".format(product.price)} / ${product.unitName}", color = MaterialTheme.colorScheme.primary)
                             Text("${"%.2f".format(product.casePrice)} / ${product.caseUnitName}", color = Color.Gray, fontSize = 12.sp)
                         }
                         Column(horizontalAlignment = Alignment.End) {
-                            TextButton(onClick = { editingProduct = product }) { Text("تعديل") }
-                            TextButton(onClick = { viewModel.deleteProduct(product.id) }) { Text("حذف", color = Color(0xFFB3261E)) }
+                            IconButton(onClick = { editingProduct = product }, modifier = Modifier.size(32.dp)) {
+                                Icon(Icons.Default.Edit, contentDescription = "تعديل الصنف", modifier = Modifier.size(18.dp))
+                            }
+                            IconButton(onClick = { viewModel.deleteProduct(product.id) }, modifier = Modifier.size(32.dp)) {
+                                Icon(
+                                    Icons.Default.Delete,
+                                    contentDescription = "حذف الصنف",
+                                    tint = Color(0xFFB3261E),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
                         }
                     }
                 }
@@ -595,10 +723,10 @@ private fun ProductEditorDialog(
     var stock by remember(product?.id) { mutableStateOf("0") }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (product == null) "منتج جديد" else "تعديل الصنف") },
+        title = { Text(if (product == null) "صنف جديد" else "تعديل الصنف") },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                FormField("اسم المنتج", name) { name = it }
+                FormField("اسم الصنف", name) { name = it }
                 FormField("الباركود", barcode) { barcode = it }
                 FormField("الوحدة المفردة", unit) { unit = it }
                 FormField("سعر المفردة", price) { price = it }
