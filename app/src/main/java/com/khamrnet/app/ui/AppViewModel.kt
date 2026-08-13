@@ -56,10 +56,20 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         viewModelScope.launch {
-            repository.initialize()
-            SyncWorker.schedule(getApplication())
+            try {
+                repository.initialize()
+                SyncWorker.schedule(getApplication())
+            } catch (error: Throwable) {
+                _state.value = _state.value.copy(
+                    error = error.message ?: "تعذر تجهيز قاعدة البيانات المحلية"
+                )
+            } finally {
+                _state.value = _state.value.copy(ready = true)
+            }
+        }
+        viewModelScope.launch {
             repository.observeProducts().collectLatest { products ->
-                _state.value = _state.value.copy(products = products, ready = true)
+                _state.value = _state.value.copy(products = products)
             }
         }
         viewModelScope.launch {
@@ -105,6 +115,22 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     fun logout() {
         _state.value = _state.value.copy(user = null, stock = emptyMap(), invoices = emptyList(), stats = DashboardStats())
+    }
+
+    fun testFirebaseConnection() {
+        viewModelScope.launch {
+            repository.testFirebaseConnection()
+                .onSuccess {
+                    _state.value = _state.value.copy(
+                        message = "اتصال Firebase يعمل وتم حفظ اختبار الاتصال بنجاح"
+                    )
+                }
+                .onFailure {
+                    _state.value = _state.value.copy(
+                        error = "فشل اختبار Firebase: ${it.message ?: "تحقق من إعداد Firebase وقواعد قاعدة البيانات"}"
+                    )
+                }
+        }
     }
 
     fun clearMessage() {
