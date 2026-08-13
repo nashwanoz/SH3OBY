@@ -61,6 +61,29 @@ interface ProductDao {
 
     @Insert
     suspend fun insert(product: ProductEntity): Long
+
+    @Query(
+        """
+        UPDATE products
+        SET name = :name, barcode = :barcode, unitName = :unitName,
+            price = :price, caseUnitName = :caseUnitName,
+            caseQuantity = :caseQuantity, casePrice = :casePrice
+        WHERE id = :id
+        """
+    )
+    suspend fun update(
+        id: Long,
+        name: String,
+        barcode: String,
+        unitName: String,
+        price: Double,
+        caseUnitName: String,
+        caseQuantity: Int,
+        casePrice: Double
+    )
+
+    @Query("DELETE FROM products WHERE id = :id")
+    suspend fun delete(id: Long)
 }
 
 @Dao
@@ -79,6 +102,9 @@ interface StockDao {
 
     @Query("UPDATE stock_balances SET quantity = quantity + :amount, updatedAt = :now WHERE productId = :productId AND warehouseId = :warehouseId")
     suspend fun add(productId: Long, warehouseId: Long, amount: Int, now: Long = System.currentTimeMillis()): Int
+
+    @Query("DELETE FROM stock_balances WHERE productId = :productId")
+    suspend fun deleteForProduct(productId: Long)
 }
 
 @Dao
@@ -118,6 +144,15 @@ interface InvoiceDao {
 
     @Query("SELECT * FROM invoice_lines WHERE invoiceId = :invoiceId")
     suspend fun lines(invoiceId: String): List<InvoiceLineEntity>
+
+    @Query("SELECT EXISTS(SELECT 1 FROM invoice_lines WHERE productId = :productId)")
+    suspend fun hasProductMovement(productId: Long): Boolean
+
+    @Query("SELECT customerId, MAX(createdAt) AS lastMovementAt FROM invoices WHERE customerId IS NOT NULL GROUP BY customerId")
+    suspend fun customerMovementTimes(): List<CustomerMovementTime>
+
+    @Query("SELECT * FROM invoices WHERE customerId = :customerId ORDER BY createdAt ASC")
+    suspend fun forCustomer(customerId: Long): List<InvoiceEntity>
 }
 
 @Dao
@@ -130,6 +165,9 @@ interface TransferDao {
 
     @Query("UPDATE stock_transfers SET posted = 1 WHERE id = :id")
     suspend fun markPosted(id: String)
+
+    @Query("SELECT EXISTS(SELECT 1 FROM stock_transfers WHERE productId = :productId)")
+    suspend fun hasProductMovement(productId: Long): Boolean
 }
 
 @Dao
@@ -142,6 +180,12 @@ interface BondDao {
 
     @Query("UPDATE financial_bonds SET posted = 1 WHERE id = :id")
     suspend fun markPosted(id: String)
+
+    @Query("SELECT customerId, MAX(createdAt) AS lastMovementAt FROM financial_bonds GROUP BY customerId")
+    suspend fun customerMovementTimes(): List<CustomerMovementTime>
+
+    @Query("SELECT * FROM financial_bonds WHERE customerId = :customerId ORDER BY createdAt ASC")
+    suspend fun forCustomer(customerId: Long): List<FinancialBondEntity>
 }
 
 @Dao
