@@ -61,6 +61,19 @@ data class CustomerEntity(
     val createdAt: Long = System.currentTimeMillis()
 )
 
+data class CustomerMovementTime(
+    val customerId: Long,
+    val lastMovementAt: Long?
+)
+
+data class CustomerStatementRow(
+    val createdAt: Long,
+    val reference: String,
+    val type: String,
+    val amount: Double,
+    val balanceAfter: Double
+)
+
 @Entity(tableName = "invoices")
 data class InvoiceEntity(
     @PrimaryKey val id: String,
