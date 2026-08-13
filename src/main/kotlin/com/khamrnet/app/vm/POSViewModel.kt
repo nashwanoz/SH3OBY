@@ -1,3 +1,4 @@
+// app/src/main/kotlin/com/khamrnet/app/vm/POSViewModel.kt
 package com.khamrnet.app.vm
 
 import androidx.lifecycle.ViewModel
@@ -9,6 +10,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
+import kotlin.math.max
 
 data class InvoiceLineUi(
     val productId: Long,
@@ -19,7 +21,7 @@ data class InvoiceLineUi(
     var lineTotal: Double
 )
 
-class POSViewModel(private val repo: AppRepository) : ViewModel() {
+class POSViewModel(val repo: AppRepository) : ViewModel() {
 
     private val _products = MutableStateFlow<List<Product>>(emptyList())
     val products: StateFlow<List<Product>> = _products
@@ -84,7 +86,6 @@ class POSViewModel(private val repo: AppRepository) : ViewModel() {
 
     fun getTotal(): Double = _currentLines.value.sumOf { it.lineTotal }
 
-    // Create invoice in DB: requires cashierId and optional customerId
     fun finalizeInvoice(cashierId: Long, customerId: Long?, onResult: (Boolean, Long?, String?) -> Unit) {
         viewModelScope.launch {
             try {
@@ -113,7 +114,6 @@ class POSViewModel(private val repo: AppRepository) : ViewModel() {
         }
     }
 
-    // Customers
     fun addCustomer(name: String, mobile: String, onDone: (Boolean, Long?, String?) -> Unit) {
         viewModelScope.launch {
             try {
@@ -126,7 +126,6 @@ class POSViewModel(private val repo: AppRepository) : ViewModel() {
         }
     }
 
-    // Bonds
     fun createBond(type: String, amount: Double, userId: Long?, customerId: Long?, notes: String?, onDone: (Boolean, Long?, String?) -> Unit) {
         viewModelScope.launch {
             try {
@@ -138,17 +137,13 @@ class POSViewModel(private val repo: AppRepository) : ViewModel() {
         }
     }
 
-    // Settlement
     fun performSettlement(cashierId: Long, physicalCash: Double, onDone: (Boolean, Long?, String?) -> Unit) {
         viewModelScope.launch {
             try {
-                // expected cash is the current cashbox balance
                 val cb = repo.db.cashBoxDao().findByOwner(cashierId)
                 val expected = cb?.balance ?: 0.0
                 val diff = physicalCash - expected
-                // create settlement record
                 val id = repo.createSettlement(Settlement(cashierId = cashierId, physicalCash = physicalCash, expectedCash = expected, difference = diff))
-                // set cashbox balance to physicalCash (collected cash)
                 if (cb != null) {
                     repo.db.cashBoxDao().updateBalance(cb.id, physicalCash)
                 } else {
@@ -161,7 +156,6 @@ class POSViewModel(private val repo: AppRepository) : ViewModel() {
         }
     }
 
-    // Stock transfer (admin)
     fun transferStock(productId: Long, qty: Double, toUserId: Long, onDone: (Boolean, String?) -> Unit) {
         viewModelScope.launch {
             try {
