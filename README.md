@@ -17,7 +17,8 @@
 
 بعد رفع مجلد المشروع إلى مستودع GitHub، شغّل workflow باسم **Build Khamr Net Android** من تبويب **Actions** أو ادفع تغييرًا إلى فرع `main` أو `master`. سيظهر ملف `khamr-net-debug-apk` في قسم **Artifacts** بعد اكتمال البناء.
 
-المزامنة مع Firebase اختيارية. إذا أردت تفعيلها أثناء بناء GitHub، أنشئ Secret باسم `GOOGLE_SERVICES_JSON` وضع داخله محتوى ملف Firebase بصيغة JSON. بدون هذا الـ Secret سيستمر البناء والتطبيق بالعمل محليًا دون اتصال.
+المزامنة مع Firebase اختيارية. عند توفر ملف Firebase الحقيقي، ضعه باسم `app/google-services.json`؛ سيُفعّل المشروع إضافة Google Services تلقائيًا أثناء البناء. بدون الملف سيستمر التطبيق محليًا، وسيظهر زر اختبار Firebase رسالة توضح أن الإعداد غير موجود.
+يوجد زر **اختبار Firebase** داخل شاشة **بيانات الأصناف**. الاختبار ينفذ كتابة حقيقية إلى المسار `connection_tests/<device-id>` للتأكد من إعداد التطبيق وقواعد Realtime Database.
 
 ## ملاحظات مهمة
 
