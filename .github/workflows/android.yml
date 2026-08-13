@@ -19,26 +19,7 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Ensure Gradle wrapper exists (generate if missing)
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [ -f ./gradlew ]; then
-            echo "Gradle wrapper already present."
-            chmod +x ./gradlew || true
-          else
-            echo "gradlew not found. Installing Gradle (via sdkman) and generating wrapper..."
-            # Install sdkman (non-interactive)
-            curl -s "https://get.sdkman.io" | bash
-            # shellcheck disable=SC1091
-            source "$HOME/.sdkman/bin/sdkman-init.sh"
-            sdk install gradle 8.2 || sdk install gradle
-            gradle wrapper --gradle-version 8.2
-            chmod +x ./gradlew
-            echo "Gradle wrapper generated."
-          fi
-
-      - name: Relocate root 'src' into 'app/src' for this build (if accidentally at repo root)
+      - name: Relocate root 'src' into 'app/src' (if accidentally at repo root)
         shell: bash
         run: |
           set -euo pipefail
@@ -46,9 +27,8 @@ jobs:
             echo "Found root-level src/ directory."
             mkdir -p app
             if [ -d "./app/src" ]; then
-              echo "app/src already exists — copying contents of root src/ into app/src/"
+              echo "app/src already exists — merging contents"
               cp -a ./src/* ./app/src/ || true
-              # remove the root src to avoid confusion in the build
               rm -rf ./src
             else
               echo "Moving root src/ into app/src/"
@@ -58,16 +38,17 @@ jobs:
             echo "No stray root-level src directory found."
           fi
 
-      - name: Print project tree (debug)
-        run: |
-          echo "Project root listing:"
-          ls -la
-          echo "app listing:"
-          ls -la app || true
+      - name: Setup Gradle Official Runner (Generates Wrapper automatically)
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: 8.2
 
-      - name: Build (assemble debug)
-        shell: bash
+      - name: Build Android App (Assemble Debug APK)
         run: |
-          set -euo pipefail
-          # Use the generated wrapper
-          ./gradlew --no-daemon clean assembleDebug
+          gradle assembleDebug --no-daemon
+
+      - name: Upload Finished APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: KhamrNet-App-APK
+          path: app/build/outputs/apk/debug/app-debug.apk
