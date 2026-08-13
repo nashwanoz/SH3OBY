@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Base theme. Using Material3 Light NoActionBar as parent. -->
+    <style name="Theme.KhamrNet" parent="Theme.Material3.Light.NoActionBar">
+        <!-- Primary branding color -->
+        <item name="colorPrimary">@color/md_theme_light_primary</item>
+        <item name="colorOnPrimary">@color/md_theme_light_onPrimary</item>
+        <item name="colorBackground">@color/md_theme_light_background</item>
+        <item name="colorSurface">@color/md_theme_light_surface</item>
+        <item name="android:windowBackground">@color/md_theme_light_background</item>
+        <!-- Use light status bar icons depending on background -->
+        <item name="android:statusBarColor">@color/md_theme_light_primary</item>
+    </style>
+
+</resources>
