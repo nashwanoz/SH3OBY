@@ -5,6 +5,10 @@ plugins {
     id("com.google.devtools.ksp")
 }
 
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
+}
+
 android {
     namespace = "com.khamrnet.app"
     compileSdk = 35
