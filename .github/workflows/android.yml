@@ -56,12 +56,10 @@ jobs:
           fi
 
       - name: Build debug APK
-        # تم التوجيه لتوليد المساعد وبناء التطبيق من داخل مجلد app الجديد
+        # قمنا بحذف أمر توليد الـ wrapper وتشغيل البناء المباشر للمجلد
         run: |
           cd app
-          gradle wrapper --gradle-version 8.9
-          chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace
+          gradle assembleDebug --no-daemon --stacktrace
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
