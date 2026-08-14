@@ -50,12 +50,13 @@ jobs:
           if [ -n "$GOOGLE_SERVICES_JSON" ]; then
             mkdir -p app
             printf '%s' "$GOOGLE_SERVICES_JSON" > app/google-services.json
+            echo "Successfully created google-services.json inside app/ directory."
           else
             echo "GOOGLE_SERVICES_JSON is not configured; building in offline-first mode."
           fi
 
       - name: Build debug APK
-        # قمنا بتعديل الأمر ليقوم بتوليد وتشغيل المساعد من داخل مجلد app مباشرة
+        # تم التوجيه لتوليد المساعد وبناء التطبيق من داخل مجلد app الجديد
         run: |
           cd app
           gradle wrapper --gradle-version 8.9
