@@ -18,6 +18,7 @@ import kotlinx.coroutines.Dispatchers
 
 data class SaleResult(
     val invoice: InvoiceEntity,
+    val lines: List<InvoiceLineEntity>,
     val message: String
 )
 
@@ -30,6 +31,20 @@ data class SaleLineInput(
     val productId: Long,
     val unitName: String,
     val quantity: Int
+)
+
+data class UserPermissions(
+    val canHome: Boolean = true,
+    val canPos: Boolean = true,
+    val canInvoices: Boolean = true,
+    val canReports: Boolean = true,
+    val canProducts: Boolean = false,
+    val canUsers: Boolean = false,
+    val canTransfers: Boolean = false,
+    val canCustomers: Boolean = true,
+    val canBonds: Boolean = true,
+    val canSettlements: Boolean = false,
+    val canWhatsapp: Boolean = true
 )
 
 private data class PreparedSaleLine(
@@ -128,8 +143,8 @@ class AppRepository(private val context: Context) {
         return db.stock().observeWarehouse(warehouse.id)
     }
 
-    suspend fun createUser(username: String, userCode: String, password: String, displayName: String): Long {
-        require(username.trim().isNotEmpty()) { "أدخل اسم المستخدم" }
+    suspend fun createUser(displayName: String, userCode: String, password: String, permissions: UserPermissions): Long {
+        require(displayName.trim().isNotEmpty()) { "أدخل اسم المستخدم الظاهر" }
         require(userCode.trim().matches(Regex("\\d+"))) { "كود المستخدم يجب أن يكون رقميًا" }
         require(password.matches(Regex("\\d+"))) { "كلمة المرور يجب أن تكون رقمية" }
         return db.withTransaction {
@@ -138,27 +153,38 @@ class AppRepository(private val context: Context) {
             }
             val userId = db.users().insert(
                 UserEntity(
-                    username = username.trim(),
+                    username = displayName.trim(),
                     userCode = userCode.trim(),
                     passwordHash = PasswordHasher.hash(password),
                     displayName = displayName.trim(),
-                    role = "CASHIER"
+                    role = "CASHIER",
+                    canHome = permissions.canHome,
+                    canPos = permissions.canPos,
+                    canInvoices = permissions.canInvoices,
+                    canReports = permissions.canReports,
+                    canProducts = permissions.canProducts,
+                    canUsers = permissions.canUsers,
+                    canTransfers = permissions.canTransfers,
+                    canCustomers = permissions.canCustomers,
+                    canBonds = permissions.canBonds,
+                    canSettlements = permissions.canSettlements,
+                    canWhatsapp = permissions.canWhatsapp
                 )
             )
-            db.warehouses().insert(WarehouseEntity(userId + 1_000_000, "مخزون $displayName", userId))
-            db.cashBoxes().insert(CashBoxEntity(userId + 1_000_000, "صندوق $displayName", userId))
+            db.warehouses().insert(WarehouseEntity(userId + 1_000_000, "مخزون ${displayName.trim()}", userId))
+            db.cashBoxes().insert(CashBoxEntity(userId + 1_000_000, "صندوق ${displayName.trim()}", userId))
             userId
         }
     }
 
     suspend fun updateUser(
         id: Long,
-        username: String,
-        userCode: String,
         displayName: String,
-        password: String?
+        userCode: String,
+        password: String?,
+        permissions: UserPermissions
     ) {
-        require(username.trim().isNotEmpty()) { "أدخل اسم المستخدم" }
+        require(displayName.trim().isNotEmpty()) { "أدخل اسم المستخدم الظاهر" }
         require(userCode.trim().matches(Regex("\\d+"))) { "كود المستخدم يجب أن يكون رقميًا" }
         require(password.isNullOrEmpty() || password.matches(Regex("\\d+"))) {
             "كلمة المرور يجب أن تكون رقمية"
@@ -166,7 +192,23 @@ class AppRepository(private val context: Context) {
         db.withTransaction {
             val other = db.users().findByUserCode(userCode.trim())
             check(other == null || other.id == id) { "كود المستخدم مستخدم مسبقًا، اختر كودًا آخر" }
-            db.users().updateProfile(id, username.trim(), userCode.trim(), displayName.trim())
+            db.users().updateProfile(
+                id = id,
+                username = displayName.trim(),
+                userCode = userCode.trim(),
+                displayName = displayName.trim(),
+                canHome = permissions.canHome,
+                canPos = permissions.canPos,
+                canInvoices = permissions.canInvoices,
+                canReports = permissions.canReports,
+                canProducts = permissions.canProducts,
+                canUsers = permissions.canUsers,
+                canTransfers = permissions.canTransfers,
+                canCustomers = permissions.canCustomers,
+                canBonds = permissions.canBonds,
+                canSettlements = permissions.canSettlements,
+                canWhatsapp = permissions.canWhatsapp
+            )
             if (!password.isNullOrEmpty()) {
                 db.users().updatePassword(id, PasswordHasher.hash(password))
             }
@@ -222,8 +264,22 @@ class AppRepository(private val context: Context) {
         }
     }
 
-    suspend fun addCustomer(name: String, mobile: String): Long =
-        db.customers().insert(CustomerEntity(name = name.trim(), mobile = mobile.trim()))
+    suspend fun addCustomer(name: String, customerCode: String, mobile: String): Long {
+        require(name.trim().isNotEmpty()) { "أدخل اسم العميل" }
+        require(customerCode.trim().isNotEmpty()) { "أدخل كود العميل" }
+        return db.withTransaction {
+            check(db.customers().findByCode(customerCode.trim()) == null) {
+                "كود العميل مستخدم مسبقًا، اختر كودًا آخر"
+            }
+            db.customers().insert(
+                CustomerEntity(
+                    name = name.trim(),
+                    customerCode = customerCode.trim(),
+                    mobile = mobile.trim()
+                )
+            )
+        }
+    }
 
     suspend fun customerLastMovements(): Map<Long, Long> {
         val movements = db.invoices().customerMovementTimes() + db.bonds().customerMovementTimes()
@@ -297,8 +353,11 @@ class AppRepository(private val context: Context) {
         if (lines.isEmpty()) return Result.failure(IllegalArgumentException("أضف صنفًا واحدًا على الأقل"))
         return suspendRunCatching {
             db.withTransaction {
-                val warehouse = db.warehouses().forUser(user.id)
-                    ?: error("لا يوجد مخزون فرعي مرتبط بهذا المستخدم")
+                val warehouse = if (user.role == "ADMIN") {
+                    db.warehouses().main()
+                } else {
+                    db.warehouses().forUser(user.id)
+                } ?: error("لا يوجد مخزون مرتبط بهذا المستخدم")
                 val preparedLines = lines.map { line ->
                     check(line.quantity > 0) { "الكمية يجب أن تكون أكبر من صفر" }
                     val product = db.products().find(line.productId) ?: error("الصنف غير موجود")
@@ -323,38 +382,37 @@ class AppRepository(private val context: Context) {
                 }
                 if (credit && customerId == null) error("اختر عميلًا للبيع الآجل")
                 val total = preparedLines.sumOf { it.lineTotal }
-                val customer = customerId?.let { db.customers().find(it) }
+                val effectiveCustomerId = if (credit) customerId else null
+                val customer = effectiveCustomerId?.let { db.customers().find(it) }
+                if (credit) check(customer != null) { "العميل غير موجود" }
                 val previous = customer?.balance ?: 0.0
                 val newBalance = if (credit) previous + total else previous
                 if (credit) db.customers().adjustBalance(customerId!!, total)
-                if (!credit) {
-                    val box = db.cashBoxes().forUser(user.id) ?: error("صندوق المستخدم غير موجود")
-                    db.cashBoxes().adjust(box.id, total)
-                }
+                val box = if (user.role == "ADMIN") db.cashBoxes().main() else db.cashBoxes().forUser(user.id)
+                check(box != null) { "صندوق المستخدم غير موجود" }
+                db.cashBoxes().adjust(box.id, total)
                 val invoice = InvoiceEntity(
                     id = nextInvoiceId(user.id),
                     userId = user.id,
-                    customerId = customerId,
+                    customerId = effectiveCustomerId,
                     paymentType = if (credit) "آجل" else "نقدي",
                     total = total,
                     previousBalance = previous,
                     newBalance = newBalance
                 )
                 db.invoices().insert(invoice)
-                preparedLines.forEach { line ->
-                    db.invoices().insertLine(
-                        InvoiceLineEntity(
-                            invoiceId = invoice.id,
-                            productId = line.product.id,
-                            productName = line.product.name,
-                            unitName = line.input.unitName,
-                            quantity = line.input.quantity,
-                            unitPrice = line.unitPrice,
-                            lineTotal = line.lineTotal
-                        )
-                    )
+                val invoiceLines = preparedLines.map { line ->
+                    InvoiceLineEntity(
+                        invoiceId = invoice.id,
+                        productId = line.product.id,
+                        productName = line.product.name,
+                        unitName = line.input.unitName,
+                        quantity = line.input.quantity,
+                        unitPrice = line.unitPrice,
+                        lineTotal = line.lineTotal
+                    ).also { db.invoices().insertLine(it) }
                 }
-                SaleResult(invoice, "تم حفظ الفاتورة ${invoice.id}")
+                SaleResult(invoice, invoiceLines, "تم حفظ الفاتورة ${invoice.id}")
             }
         }
     }
@@ -368,20 +426,28 @@ class AppRepository(private val context: Context) {
     ): Result<BondResult> = suspendRunCatching {
         require(amount > 0) { "أدخل مبلغًا صحيحًا" }
         db.withTransaction {
+            val customer = db.customers().find(customerId) ?: error("العميل غير موجود")
+            val previousBalance = customer.balance
             val signedAmount = if (type == "قبض") -amount else amount
+            val newBalance = previousBalance + signedAmount
             db.customers().adjustBalance(customerId, signedAmount)
+            val box = db.cashBoxes().forUser(userId) ?: db.cashBoxes().main()
+            check(box != null) { "صندوق المستخدم غير موجود" }
+            db.cashBoxes().adjust(box.id, if (type == "قبض") amount else -amount)
             val bond = FinancialBondEntity(
-                nextDocumentId(userId, if (type == "قبض") 3 else 1),
-                userId,
-                customerId,
-                type,
-                amount,
-                note
+                id = nextDocumentId(userId, if (type == "قبض") 3 else 1),
+                userId = userId,
+                customerId = customerId,
+                type = type,
+                amount = amount,
+                previousBalance = previousBalance,
+                newBalance = newBalance,
+                note = note
             )
             db.bonds().insert(bond)
             BondResult(
                 bond = bond,
-                customer = db.customers().find(customerId) ?: error("العميل غير موجود")
+                customer = customer.copy(balance = newBalance)
             )
         }
     }
@@ -529,6 +595,8 @@ private fun FinancialBondEntity.toMap() = mapOf(
     "customerId" to customerId,
     "type" to type,
     "amount" to amount,
+    "previousBalance" to previousBalance,
+    "newBalance" to newBalance,
     "note" to note,
     "createdAt" to createdAt
 )
