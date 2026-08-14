@@ -101,14 +101,29 @@ fun FormField(
 ) {
     OutlinedTextField(
         value = value,
-        onValueChange = { value -> onChange(if (numeric) value.filter(Char::isDigit) else value) },
+        onValueChange = { nextValue ->
+            onChange(if (numeric) sanitizeNumber(nextValue) else nextValue)
+        },
         label = { Text(label) },
         modifier = Modifier.fillMaxWidth(),
         singleLine = true,
         keyboardOptions = KeyboardOptions(
-            keyboardType = if (numeric) KeyboardType.Number else KeyboardType.Text
+            keyboardType = if (numeric) KeyboardType.Decimal else KeyboardType.Text
         )
     )
+}
+
+private fun sanitizeNumber(value: String): String {
+    val normalized = value
+        .replace(',', '.')
+        .filter { it.isDigit() || it == '.' }
+    val separatorIndex = normalized.indexOf('.')
+    return if (separatorIndex == -1) {
+        normalized
+    } else {
+        normalized.take(separatorIndex + 1) +
+            normalized.drop(separatorIndex + 1).replace(".", "")
+    }
 }
 
 @Composable
