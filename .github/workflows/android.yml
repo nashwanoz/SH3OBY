@@ -48,6 +48,8 @@ jobs:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: |
           if [ -n "$GOOGLE_SERVICES_JSON" ]; then
+            # قمنا بإضافة أمر mkdir للتأكد من وجود المجلد قبل صناعة الملف لمنع خطأ No such file or directory
+            mkdir -p app
             printf '%s' "$GOOGLE_SERVICES_JSON" > app/google-services.json
           else
             echo "GOOGLE_SERVICES_JSON is not configured; building in offline-first mode."
