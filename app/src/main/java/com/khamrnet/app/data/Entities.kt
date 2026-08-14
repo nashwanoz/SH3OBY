@@ -16,8 +16,34 @@ data class UserEntity(
     val displayName: String,
     val role: String,
     val active: Boolean = true,
+    val canHome: Boolean = true,
+    val canPos: Boolean = true,
+    val canInvoices: Boolean = true,
+    val canReports: Boolean = true,
+    val canProducts: Boolean = false,
+    val canUsers: Boolean = false,
+    val canTransfers: Boolean = false,
+    val canCustomers: Boolean = true,
+    val canBonds: Boolean = true,
+    val canSettlements: Boolean = false,
+    val canWhatsapp: Boolean = true,
     val createdAt: Long = System.currentTimeMillis()
-)
+) {
+    fun canAccess(section: String): Boolean =
+        role == "ADMIN" || when (section) {
+            "HOME" -> canHome
+            "POS" -> canPos
+            "INVOICES" -> canInvoices
+            "REPORTS" -> canReports
+            "PRODUCTS" -> canProducts
+            "USERS" -> canUsers
+            "TRANSFERS" -> canTransfers
+            "CUSTOMERS" -> canCustomers
+            "BONDS" -> canBonds
+            "SETTLEMENTS" -> canSettlements
+            else -> false
+        }
+}
 
 @Entity(tableName = "warehouses")
 data class WarehouseEntity(
@@ -61,6 +87,7 @@ data class StockBalanceEntity(
 data class CustomerEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val name: String,
+    val customerCode: String,
     val mobile: String = "",
     val balance: Double = 0.0,
     val createdAt: Long = System.currentTimeMillis()
@@ -123,6 +150,8 @@ data class FinancialBondEntity(
     val customerId: Long,
     val type: String,
     val amount: Double,
+    val previousBalance: Double = 0.0,
+    val newBalance: Double = 0.0,
     val note: String = "",
     val createdAt: Long = System.currentTimeMillis(),
     val posted: Boolean = false
