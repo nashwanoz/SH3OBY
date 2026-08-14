@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -58,7 +59,8 @@ fun SettlementsScreen(state: AppUiState, viewModel: AppViewModel) {
         Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF3D6)), shape = RoundedCornerShape(16.dp)) {
             Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.AccountBalance, null, tint = Color(0xFF9A6700))
-                Spacer(Modifier.padding(horizontal = 5.dp))
+                // تم التصحيح هنا لاستخدام width بدلاً من padding وتوليد مسافة حقيقية
+                Spacer(Modifier.width(10.dp))
                 Text("بعد الحفظ سيستمر الكاشير بالعمل، ويظهر الفرق المرحّل في لوحته.")
             }
         }
