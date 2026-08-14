@@ -16,6 +16,7 @@ import com.khamrnet.app.data.CustomerEntity
 import com.khamrnet.app.data.CustomerStatementRow
 import com.khamrnet.app.data.FinancialBondEntity
 import com.khamrnet.app.data.InvoiceEntity
+import com.khamrnet.app.data.InvoiceLineEntity
 import java.io.File
 import java.nio.charset.Charset
 import java.util.UUID
@@ -23,10 +24,11 @@ import java.util.UUID
 object PrintAndShare {
     fun whatsapp(context: Context, customer: CustomerEntity?, invoice: InvoiceEntity) {
         val text = """
-            عميلنا العزيز ${customer?.name ?: "عميلنا العزيز"}
-            عليكم فاتورة بمبلغ: ${format(invoice.total)}
-            رصيدكم الإجمالي: ${format(invoice.newBalance)}
-            رقم الفاتورة: ${invoice.id}
+            عزيزي العميل ${customer?.name ?: "مبيعات نقدية"}
+            عليكم فاتورة مبيعات رقم ${invoice.id}
+            مبلغ الفاتورة: ${format(invoice.total)}
+            رصيدكم السابق: ${format(invoice.previousBalance)}
+            ${balanceLabel(invoice.newBalance)}
         """.trimIndent()
         val intent = Intent(Intent.ACTION_SENDTO).apply {
             data = Uri.parse("smsto:${customer?.mobile ?: ""}")
@@ -39,21 +41,13 @@ object PrintAndShare {
     }
 
     fun whatsappBond(context: Context, customer: CustomerEntity, bond: FinancialBondEntity) {
-        val text = if (bond.type == "قبض") {
-            """
-                عميلنا العزيز ${customer.name}
-                تم سداد مبلغ: ${format(bond.amount)}
-                برقم السند: ${bond.id}
-            ${balanceLabel(customer.balance)}
-            """.trimIndent()
-        } else {
-            """
-                عميلنا العزيز ${customer.name}
-                تم تسجيل سند صرف بمبلغ: ${format(bond.amount)}
-                برقم السند: ${bond.id}
-                ${balanceLabel(customer.balance)}
-            """.trimIndent()
-        }
+        val text = """
+            عزيزي العميل ${customer.name}
+            ${if (bond.type == "قبض") "تم استلام سند قبض" else "تم تسجيل سند صرف"} رقم ${bond.id}
+            مبلغ السند: ${format(bond.amount)}
+            رصيدكم السابق: ${format(bond.previousBalance)}
+            ${balanceLabel(bond.newBalance)}
+        """.trimIndent()
         val intent = Intent(Intent.ACTION_SENDTO).apply {
             data = Uri.parse("smsto:${customer.mobile}")
             putExtra("sms_body", text)
@@ -64,16 +58,22 @@ object PrintAndShare {
         }
     }
 
-    fun receiptBytes(invoice: InvoiceEntity, customerName: String = "عميل نقدي"): ByteArray {
+    fun receiptBytes(
+        invoice: InvoiceEntity,
+        customerName: String = "مبيعات نقدية",
+        lines: List<InvoiceLineEntity> = emptyList()
+    ): ByteArray {
         val receipt = """
             خمر نت
             ------------------------------
             رقم الفاتورة: ${invoice.id}
             العميل: $customerName
             طريقة الدفع: ${invoice.paymentType}
+            التاريخ: ${formatDate(invoice.createdAt)}
+            ${lines.joinToString("\n") { "${it.productName} ${it.quantity} ${it.unitName} = ${format(it.lineTotal)}" }}
             الإجمالي: ${format(invoice.total)}
             الرصيد السابق: ${format(invoice.previousBalance)}
-            الإجمالي المستحق: ${format(invoice.newBalance)}
+            ${balanceLabel(invoice.newBalance)}
             ------------------------------
             شكرًا لتعاملكم معنا
             
@@ -92,7 +92,8 @@ object PrintAndShare {
     fun printBluetooth(
         device: BluetoothDevice,
         invoice: InvoiceEntity,
-        customerName: String
+        customerName: String,
+        lines: List<InvoiceLineEntity> = emptyList()
     ): Result<Unit> = runCatching {
         val adapter = BluetoothAdapter.getDefaultAdapter() ?: error("لا يدعم الجهاز Bluetooth")
         check(adapter.isEnabled) { "فعّل Bluetooth أولًا" }
@@ -104,7 +105,51 @@ object PrintAndShare {
             socket.connect()
             socket.outputStream.use { output ->
                 output.write(byteArrayOf(0x1B, 0x40))
-                output.write(receiptBytes(invoice, customerName))
+                output.write(receiptBytes(invoice, customerName, lines))
+                output.write(byteArrayOf(0x1D, 0x56, 0x00))
+                output.flush()
+            }
+        } finally {
+            socket.close()
+        }
+    }
+
+    fun bondReceiptBytes(customer: CustomerEntity, bond: FinancialBondEntity): ByteArray {
+        val receipt = """
+            خمر نت
+            ------------------------------
+            سند ${bond.type}
+            رقم السند: ${bond.id}
+            التاريخ: ${formatDate(bond.createdAt)}
+            العميل: ${customer.name}
+            رصيدكم السابق: ${format(bond.previousBalance)}
+            مبلغ السند: ${format(bond.amount)}
+            ${balanceLabel(bond.newBalance)}
+            البيان: ${bond.note.ifBlank { "بدون بيان" }}
+            ------------------------------
+            شكرًا لتعاملكم معنا
+
+        """.trimIndent()
+        return runCatching { receipt.toByteArray(Charset.forName("CP864")) }
+            .getOrElse { receipt.toByteArray(Charset.forName("windows-1256")) }
+    }
+
+    fun printBondBluetooth(
+        device: BluetoothDevice,
+        customer: CustomerEntity,
+        bond: FinancialBondEntity
+    ): Result<Unit> = runCatching {
+        val adapter = BluetoothAdapter.getDefaultAdapter() ?: error("لا يدعم الجهاز Bluetooth")
+        check(adapter.isEnabled) { "فعّل Bluetooth أولًا" }
+        val socket = device.createRfcommSocketToServiceRecord(
+            UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
+        )
+        try {
+            adapter.cancelDiscovery()
+            socket.connect()
+            socket.outputStream.use { output ->
+                output.write(byteArrayOf(0x1B, 0x40))
+                output.write(bondReceiptBytes(customer, bond))
                 output.write(byteArrayOf(0x1D, 0x56, 0x00))
                 output.flush()
             }
@@ -127,6 +172,30 @@ object PrintAndShare {
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
         context.startActivity(Intent.createChooser(intent, "مشاركة كشف الحساب"))
+    }
+
+    fun shareStatementToWhatsapp(
+        context: Context,
+        customer: CustomerEntity,
+        rows: List<CustomerStatementRow>
+    ) {
+        val summary = rows.joinToString("\n") {
+            "${formatDate(it.createdAt)} - ${it.type} - ${signedAmountLabel(it.amount)} - ${balanceLabel(it.balanceAfter)}"
+        }
+        val text = """
+            عزيزي العميل ${customer.name}
+            كشف حسابكم
+            ${summary.ifBlank { "لا توجد حركات مالية مسجلة" }}
+            ${balanceLabel(customer.balance)}
+        """.trimIndent()
+        val intent = Intent(Intent.ACTION_SENDTO).apply {
+            data = Uri.parse("smsto:${customer.mobile}")
+            putExtra("sms_body", text)
+            setPackage("com.whatsapp")
+        }
+        runCatching { context.startActivity(intent) }.getOrElse {
+            context.startActivity(Intent.createChooser(intent, "إرسال كشف الحساب عبر واتساب"))
+        }
     }
 
     private fun createStatementPdf(
