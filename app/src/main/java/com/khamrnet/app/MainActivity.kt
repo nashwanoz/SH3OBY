@@ -1321,6 +1321,7 @@ private fun CustomersScreen(
 ) {
     var showAdd by remember { mutableStateOf(false) }
     var query by rememberSaveable { mutableStateOf("") }
+    var selectedCustomer by remember { mutableStateOf<CustomerEntity?>(null) }
     var statementCustomer by remember { mutableStateOf<CustomerEntity?>(null) }
     var statementRows by remember { mutableStateOf<List<CustomerStatementRow>?>(null) }
     val nextCustomerCode = (state.customers.mapNotNull { it.customerCode.toIntOrNull() }.maxOrNull() ?: 0) + 1
@@ -1415,6 +1416,21 @@ private fun CustomersScreen(
                 }
             }
         }
+    }
+    selectedCustomer?.let { customer ->
+        CustomerSummaryDialog(
+            customer = customer,
+            lastMovement = state.customerLastMovement[customer.id],
+            onStatement = {
+                selectedCustomer = null
+                statementCustomer = customer
+                statementRows = null
+                viewModel.loadCustomerStatement(customer.id) { rows ->
+                    statementRows = rows
+                }
+            },
+            onDismiss = { selectedCustomer = null }
+        )
     }
     if (statementCustomer != null && statementRows != null) {
         CustomerStatementDialog(
