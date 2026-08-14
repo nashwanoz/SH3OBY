@@ -1,5 +1,4 @@
 package com.khamrnet.app.ui.screens
-import com.khamrnet.app.AppSection
 
 import android.content.Context
 import androidx.compose.foundation.clickable
@@ -44,7 +43,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
 import com.khamrnet.app.data.CustomerEntity
 import com.khamrnet.app.data.CustomerStatementRow
-import com.khamrnet.app.ui.AppSection
+import com.khamrnet.app.AppSection
 import com.khamrnet.app.ui.AppUiState
 import com.khamrnet.app.ui.AppViewModel
 import com.khamrnet.app.ui.components.EmptyState
