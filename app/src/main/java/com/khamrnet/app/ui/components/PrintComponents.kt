@@ -1,4 +1,6 @@
 package com.khamrnet.app.ui.components
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 
 import android.Manifest
 import android.bluetooth.BluetoothDevice
