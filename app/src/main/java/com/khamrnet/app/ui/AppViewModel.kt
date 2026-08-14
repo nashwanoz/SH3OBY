@@ -7,10 +7,12 @@ import com.khamrnet.app.data.AppRepository
 import com.khamrnet.app.data.CustomerStatementRow
 import com.khamrnet.app.data.CustomerEntity
 import com.khamrnet.app.data.FinancialBondEntity
+import com.khamrnet.app.data.InvoiceLineEntity
 import com.khamrnet.app.data.ProductEntity
 import com.khamrnet.app.data.UserEntity
 import com.khamrnet.app.data.InvoiceEntity
 import com.khamrnet.app.data.SaleLineInput
+import com.khamrnet.app.data.UserPermissions
 import com.khamrnet.app.sync.SyncWorker
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -25,7 +27,8 @@ data class DashboardStats(
 
 data class SaleReceipt(
     val invoice: InvoiceEntity,
-    val customer: CustomerEntity?
+    val customer: CustomerEntity?,
+    val lines: List<InvoiceLineEntity>
 )
 
 data class BondReceipt(
@@ -164,18 +167,24 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         _state.value = _state.value.copy(message = null, error = null)
     }
 
-    fun createUser(username: String, userCode: String, password: String, name: String) {
+    fun createUser(name: String, userCode: String, password: String, permissions: UserPermissions) {
         viewModelScope.launch {
-            suspendRunCatching { repository.createUser(username, userCode, password, name) }
+            suspendRunCatching { repository.createUser(name, userCode, password, permissions) }
                 .onSuccess { _state.value = _state.value.copy(message = "تم إنشاء حساب الكاشير والمخزون والصندوق") }
                 .onFailure { _state.value = _state.value.copy(error = it.message ?: "تعذر إنشاء الحساب") }
         }
     }
 
-    fun updateUser(user: UserEntity, username: String, userCode: String, password: String, name: String) {
+    fun updateUser(
+        user: UserEntity,
+        name: String,
+        userCode: String,
+        password: String,
+        permissions: UserPermissions
+    ) {
         viewModelScope.launch {
             suspendRunCatching {
-                repository.updateUser(user.id, username, userCode, name, password.ifBlank { null })
+                repository.updateUser(user.id, name, userCode, password.ifBlank { null }, permissions)
             }.onSuccess {
                 _state.value = _state.value.copy(message = "تم تعديل بيانات المستخدم")
             }.onFailure {
@@ -221,9 +230,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun addCustomer(name: String, mobile: String) {
+    fun addCustomer(name: String, customerCode: String, mobile: String) {
         viewModelScope.launch {
-            suspendRunCatching { repository.addCustomer(name, mobile) }
+            suspendRunCatching { repository.addCustomer(name, customerCode, mobile) }
                 .onSuccess { _state.value = _state.value.copy(message = "تمت إضافة العميل") }
                 .onFailure { _state.value = _state.value.copy(error = it.message ?: "تعذر إضافة العميل") }
         }
@@ -246,7 +255,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                     val customer = _state.value.customers.firstOrNull { item -> item.id == it.invoice.customerId }
                     _state.value = _state.value.copy(
                         message = null,
-                        saleReceipt = SaleReceipt(it.invoice, customer)
+                        saleReceipt = SaleReceipt(it.invoice, customer, it.lines)
                     )
                     refreshStats(user.id)
                 }
