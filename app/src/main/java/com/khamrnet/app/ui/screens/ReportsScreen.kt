@@ -3,7 +3,6 @@ package com.khamrnet.app.ui.screens
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -16,7 +15,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -28,38 +26,13 @@ import com.khamrnet.app.ui.components.balanceColor
 
 @Composable
 fun ReportsScreen(state: AppUiState) {
-    // 1. حساب وتصفية البيانات داخل remember لتحسين الأداء وضمان الأمان
-    val reportData = remember(state) {
-        val usersList = if (state.user?.role == "ADMIN") state.users else state.users.filter { it.id == state.user?.id }
-        val allowedUserIds = usersList.map { it.id }.toSet()
-        
-        // تصفية الفواتير لتشمل فقط المستخدمين المسموح برؤيتهم
-        val filteredInvoices = state.invoices.filter { it.userId in allowedUserIds }
-        
-        val salesByUser = filteredInvoices.groupingBy { it.userId }.fold(0.0) { total, invoice -> total + invoice.total }
-        val invoiceCountByUser = filteredInvoices.groupingBy { it.userId }.eachCount()
-        val totalSalesSum = filteredInvoices.sumOf { it.total }
-        
-        val topCustomers = state.customers
-            .sortedByDescending { kotlin.math.abs(it.balance) }
-            .take(30)
-
-        // إرجاع البيانات المحسوبة بكفاءة
-        ReportData(
-            visibleUsers = usersList,
-            filteredInvoices = filteredInvoices,
-            salesByUser = salesByUser,
-            invoiceCountByUser = invoiceCountByUser,
-            totalSalesSum = totalSalesSum,
-            topCustomers = topCustomers
-        )
-    }
-
+    val visibleUsers = if (state.user?.role == "ADMIN") state.users else state.users.filter { it.id == state.user?.id }
+    val salesByUser = state.invoices.groupingBy { it.userId }.fold(0.0) { total, invoice -> total + invoice.total }
+    val invoiceCountByUser = state.invoices.groupingBy { it.userId }.eachCount()
     Column(Modifier.fillMaxSize().padding(16.dp)) {
         Text("التقارير", fontSize = 22.sp, fontWeight = FontWeight.Bold)
         Text("ملخص حركة المبيعات والعهدة حسب المستخدم", color = Color.Gray, fontSize = 12.sp)
-        Spacer(Modifier.height(14.dp))
-        
+        androidx.compose.foundation.layout.Spacer(Modifier.height(14.dp))
         LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             item {
                 Card(
@@ -69,18 +42,15 @@ fun ReportsScreen(state: AppUiState) {
                 ) {
                     Column(Modifier.padding(16.dp)) {
                         Text("إجمالي المبيعات المعروضة", color = Color.Gray)
-                        // تم تعديلها لتأخذ المجموع المفلتر الصحيح
-                        Text("%.2f".format(reportData.totalSalesSum), fontSize = 24.sp, fontWeight = FontWeight.Bold)
-                        Text("${reportData.filteredInvoices.size} فاتورة", color = Color.Gray, fontSize = 12.sp)
+                        Text("%.2f".format(state.invoices.sumOf { it.total }), fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                        Text("${state.invoices.size} فاتورة", color = Color.Gray, fontSize = 12.sp)
                     }
                 }
             }
-            
             item { Text("تقرير المستخدمين", fontSize = 18.sp, fontWeight = FontWeight.Bold) }
-            
-            items(reportData.visibleUsers, key = { it.id }) { user ->
-                val sales = reportData.salesByUser[user.id] ?: 0.0
-                val count = reportData.invoiceCountByUser[user.id] ?: 0
+            items(visibleUsers, key = { it.id }) { user ->
+                val sales = salesByUser[user.id] ?: 0.0
+                val count = invoiceCountByUser[user.id] ?: 0
                 val cash = state.cashBalances[user.id] ?: 0.0
                 Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
                     Column(Modifier.padding(16.dp)) {
@@ -93,10 +63,8 @@ fun ReportsScreen(state: AppUiState) {
                     }
                 }
             }
-            
             item { Text("ملخص العملاء", fontSize = 18.sp, fontWeight = FontWeight.Bold) }
-            
-            items(reportData.topCustomers, key = { it.id }) { customer ->
+            items(state.customers.sortedByDescending { kotlin.math.abs(it.balance) }.take(30), key = { it.id }) { customer ->
                 Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) {
                     Row(
                         Modifier.fillMaxWidth().padding(14.dp),
@@ -113,13 +81,3 @@ fun ReportsScreen(state: AppUiState) {
         }
     }
 }
-
-// كلاس مساعد لتجميع البيانات المحسوبة خارج نطاق الرسم الرئيسي
-private class ReportData(
-    val visibleUsers: List<any>, // استبدل any بنوع كلاس الـ User لديك مثل UserState أو User
-    val filteredInvoices: List<any>, // استبدل any بنوع كلاس الـ Invoice لديك
-    val salesByUser: Map<String, Double>,
-    val invoiceCountByUser: Map<String, Int>,
-    val totalSalesSum: Double,
-    val topCustomers: List<any> // استبدل any بنوع كلاس الـ Customer لديك
-)
