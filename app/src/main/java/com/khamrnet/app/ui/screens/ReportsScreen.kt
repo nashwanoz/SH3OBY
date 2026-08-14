@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -28,11 +29,10 @@ fun ReportsScreen(state: AppUiState) {
     val visibleUsers = if (state.user?.role == "ADMIN") state.users else state.users.filter { it.id == state.user?.id }
     val salesByUser = state.invoices.groupingBy { it.userId }.fold(0.0) { total, invoice -> total + invoice.total }
     val invoiceCountByUser = state.invoices.groupingBy { it.userId }.eachCount()
-    val userNames = state.users.associateBy { it.id }
     Column(Modifier.fillMaxSize().padding(16.dp)) {
         Text("التقارير", fontSize = 22.sp, fontWeight = FontWeight.Bold)
         Text("ملخص حركة المبيعات والعهدة حسب المستخدم", color = Color.Gray, fontSize = 12.sp)
-        androidx.compose.foundation.layout.Spacer(Modifier.padding(top = 14.dp))
+        androidx.compose.foundation.layout.Spacer(Modifier.height(14.dp))
         LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             item {
                 Card(
