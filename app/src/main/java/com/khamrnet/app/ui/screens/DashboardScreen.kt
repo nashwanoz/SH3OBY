@@ -32,7 +32,7 @@ import com.khamrnet.app.ui.AppUiState
 fun DashboardScreen(state: AppUiState, onNavigate: (AppSection) -> Unit) {
     val stats = state.stats
     val isAdmin = state.user?.role == "ADMIN"
-    val actions = if (isAdmin) {
+    val actions = (if (isAdmin) {
         listOf(
             AppSection.POS, AppSection.INVOICES, AppSection.REPORTS,
             AppSection.PRODUCTS, AppSection.USERS, AppSection.TRANSFERS,
@@ -40,7 +40,7 @@ fun DashboardScreen(state: AppUiState, onNavigate: (AppSection) -> Unit) {
         )
     } else {
         listOf(AppSection.POS, AppSection.INVOICES, AppSection.REPORTS, AppSection.CUSTOMERS, AppSection.BONDS)
-    }
+    }).filter { state.user?.canAccess(it.name) == true }
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(18.dp),
