@@ -270,7 +270,7 @@ private fun InvoiceProductCard(
     onClick: () -> Unit
 ) {
     Card(
-        modifier = modifier.height(98.dp).clickable(onClick = onClick),
+        modifier = modifier.height(98.dp).clickable(enabled = stock > 0, onClick = onClick),
         shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(containerColor = if (stock > 0) Color.White else Color(0xFFF1E7E7))
     ) {
@@ -279,7 +279,12 @@ private fun InvoiceProductCard(
             Text("${"%.2f".format(product.price)} / ${product.unitName}", color = MaterialTheme.colorScheme.primary, fontSize = 10.sp)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text("المتاح", color = Color.Gray, fontSize = 10.sp)
-                Text("$stock", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = if (stock > 0) Color(0xFF0F766E) else Color.Red)
+                Text(
+                    if (stock > 0) "$stock" else "نفد",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 11.sp,
+                    color = if (stock > 0) Color(0xFF0F766E) else Color.Red
+                )
             }
         }
     }
