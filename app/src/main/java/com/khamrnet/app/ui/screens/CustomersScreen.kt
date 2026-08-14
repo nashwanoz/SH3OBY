@@ -1,4 +1,5 @@
 package com.khamrnet.app.ui.screens
+import com.khamrnet.app.AppSection
 
 import android.content.Context
 import androidx.compose.foundation.clickable
