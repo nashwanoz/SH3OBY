@@ -56,12 +56,16 @@ import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Warehouse
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Divider
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -109,10 +113,13 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.khamrnet.app.data.CustomerEntity
+import com.khamrnet.app.data.CustomerStatementRow
 import com.khamrnet.app.data.InvoiceEntity
+import com.khamrnet.app.data.InvoiceLineEntity
 import com.khamrnet.app.data.ProductEntity
 import com.khamrnet.app.data.SaleLineInput
 import com.khamrnet.app.data.UserEntity
+import com.khamrnet.app.data.UserPermissions
 import com.khamrnet.app.ui.AppUiState
 import com.khamrnet.app.ui.AppViewModel
 import com.khamrnet.app.ui.BondReceipt
@@ -186,10 +193,18 @@ private fun KhamrApp(viewModel: AppViewModel) {
         else -> MainShell(state, viewModel, snackbarHostState)
     }
     state.saleReceipt?.let { receipt ->
-        SaleReceiptDialog(receipt, viewModel::clearSaleReceipt)
+        SaleReceiptDialog(
+            receipt = receipt,
+            canWhatsapp = state.user?.role == "ADMIN" || state.user?.canWhatsapp == true,
+            onDismiss = viewModel::clearSaleReceipt
+        )
     }
     state.bondReceipt?.let { receipt ->
-        BondReceiptDialog(receipt, viewModel::clearBondReceipt)
+        BondReceiptDialog(
+            receipt = receipt,
+            canWhatsapp = state.user?.role == "ADMIN" || state.user?.canWhatsapp == true,
+            onDismiss = viewModel::clearBondReceipt
+        )
     }
     if (showExitConfirmation) {
         AlertDialog(
@@ -338,14 +353,17 @@ private fun LoginScreen(state: AppUiState, viewModel: AppViewModel) {
 @Composable
 private fun MainShell(state: AppUiState, viewModel: AppViewModel, snackbar: SnackbarHostState) {
     val isAdmin = state.user?.role == "ADMIN"
-    var selected by rememberSaveable { mutableStateOf(if (isAdmin) AppSection.HOME.name else AppSection.POS.name) }
-    val section = runCatching { AppSection.valueOf(selected) }.getOrDefault(AppSection.HOME)
-    val available = if (isAdmin) {
-        listOf(AppSection.HOME, AppSection.POS, AppSection.INVOICES, AppSection.REPORTS, AppSection.PRODUCTS, AppSection.USERS, AppSection.TRANSFERS, AppSection.CUSTOMERS, AppSection.BONDS, AppSection.SETTLEMENTS)
-    } else {
-        listOf(AppSection.POS, AppSection.INVOICES, AppSection.REPORTS, AppSection.CUSTOMERS, AppSection.BONDS)
-    }
-    val bottomItems = available.take(5)
+    val available = AppSection.values().filter { state.user?.canAccess(it.name) == true }
+    val defaultSection = available.firstOrNull { it == AppSection.HOME }
+        ?: available.firstOrNull { it == AppSection.POS }
+        ?: available.firstOrNull()
+        ?: AppSection.POS
+    var selected by rememberSaveable { mutableStateOf(defaultSection.name) }
+    var showSectionMenu by remember { mutableStateOf(false) }
+    var invoiceCustomerId by rememberSaveable { mutableStateOf<Long?>(null) }
+    var bondCustomerId by rememberSaveable { mutableStateOf<Long?>(null) }
+    val section = available.firstOrNull { it.name == selected } ?: defaultSection
+    val bottomItems = available.take(4)
     Scaffold(
         topBar = {
             TopAppBar(
@@ -359,6 +377,25 @@ private fun MainShell(state: AppUiState, viewModel: AppViewModel, snackbar: Snac
                 },
                 actions = {
                     Text(state.user?.displayName ?: "", color = MaterialTheme.colorScheme.primary)
+                    Box {
+                        IconButton(onClick = { showSectionMenu = true }) {
+                            Icon(Icons.Default.MoreVert, contentDescription = "الشاشات")
+                        }
+                        DropdownMenu(
+                            expanded = showSectionMenu,
+                            onDismissRequest = { showSectionMenu = false }
+                        ) {
+                            available.forEach { item ->
+                                DropdownMenuItem(
+                                    text = { Text(item.title) },
+                                    onClick = {
+                                        selected = item.name
+                                        showSectionMenu = false
+                                    }
+                                )
+                            }
+                        }
+                    }
                     IconButton(onClick = viewModel::logout) {
                         Icon(Icons.Default.Logout, contentDescription = "خروج")
                     }
@@ -384,14 +421,25 @@ private fun MainShell(state: AppUiState, viewModel: AppViewModel, snackbar: Snac
         Surface(Modifier.fillMaxSize().padding(padding), color = MaterialTheme.colorScheme.background) {
             when (section) {
                 AppSection.HOME -> DashboardScreen(state) { selected = it.name }
-                AppSection.POS -> PosScreen(state, viewModel)
+                AppSection.POS -> PosScreen(state, viewModel, invoiceCustomerId) { invoiceCustomerId = null }
                 AppSection.INVOICES -> InvoicesScreen(state) { selected = AppSection.POS.name }
                 AppSection.REPORTS -> ReportsScreen(state)
                 AppSection.PRODUCTS -> ProductsScreen(state, viewModel)
                 AppSection.USERS -> UsersScreen(state, viewModel)
                 AppSection.TRANSFERS -> TransfersScreen(state, viewModel)
-                AppSection.CUSTOMERS -> CustomersScreen(state, viewModel)
-                AppSection.BONDS -> BondsScreen(state, viewModel)
+                AppSection.CUSTOMERS -> CustomersScreen(
+                    state = state,
+                    viewModel = viewModel,
+                    onIssueInvoice = { customer ->
+                        invoiceCustomerId = customer.id
+                        selected = AppSection.POS.name
+                    },
+                    onIssueBond = { customer ->
+                        bondCustomerId = customer.id
+                        selected = AppSection.BONDS.name
+                    }
+                )
+                AppSection.BONDS -> BondsScreen(state, viewModel, bondCustomerId) { bondCustomerId = null }
                 AppSection.SETTLEMENTS -> SettlementsScreen(state, viewModel)
             }
         }
@@ -629,8 +677,13 @@ private fun ReportsScreen(state: AppUiState) {
 }
 
 @Composable
-private fun PosScreen(state: AppUiState, viewModel: AppViewModel) {
-    var credit by rememberSaveable { mutableStateOf(false) }
+private fun PosScreen(
+    state: AppUiState,
+    viewModel: AppViewModel,
+    initialCustomerId: Long? = null,
+    onInitialCustomerConsumed: () -> Unit = {}
+) {
+    var credit by rememberSaveable(initialCustomerId) { mutableStateOf(initialCustomerId != null) }
     var customer by remember { mutableStateOf<CustomerEntity?>(null) }
     var selectedProduct by remember { mutableStateOf<ProductEntity?>(null) }
     var productQuery by rememberSaveable { mutableStateOf("") }
@@ -644,11 +697,22 @@ private fun PosScreen(state: AppUiState, viewModel: AppViewModel) {
     }.take(8)
     val invoiceTotal = cart.sumOf { it.lineTotal }
 
+    LaunchedEffect(initialCustomerId, state.customers) {
+        initialCustomerId?.let { id ->
+            state.customers.firstOrNull { it.id == id }?.let {
+                customer = it
+                credit = true
+                onInitialCustomerConsumed()
+            }
+        }
+    }
+
     LaunchedEffect(state.saleReceipt?.invoice?.id) {
         if (state.saleReceipt != null) {
             cart = emptyList()
             customer = null
             credit = false
+            onInitialCustomerConsumed()
         }
     }
 
@@ -663,36 +727,45 @@ private fun PosScreen(state: AppUiState, viewModel: AppViewModel) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
-                Text("فاتورة جديدة", fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                Text("أضف أكثر من صنف إلى نفس الفاتورة", color = Color.Gray, fontSize = 12.sp)
+            Column(Modifier.weight(1f)) {
+                Text("فاتورة مبيعات", fontSize = 21.sp, fontWeight = FontWeight.Bold)
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("الرقم: سيصدر عند الحفظ", color = Color.Gray, fontSize = 11.sp)
+                    Text("التاريخ: ${formatDate(System.currentTimeMillis())}", color = Color.Gray, fontSize = 11.sp)
+                }
             }
             AssistChip(onClick = {}, label = { Text("${state.products.size} صنف") }, leadingIcon = {
                 Icon(Icons.Default.Inventory, contentDescription = null)
             })
         }
 
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Button(
                 onClick = { credit = false; customer = null },
                 enabled = credit
             ) {
-                Icon(Icons.Default.AccountBalance, contentDescription = null)
-                Spacer(Modifier.width(6.dp))
-                Text("فاتورة نقدي")
+                Text("نقداً", fontSize = 12.sp)
             }
             OutlinedButton(
                 onClick = { credit = true },
                 enabled = !credit
             ) {
-                Icon(Icons.Default.People, contentDescription = null)
-                Spacer(Modifier.width(6.dp))
-                Text("فاتورة آجل")
+                Text("آجل", fontSize = 12.sp)
             }
+            Text(
+                if (credit) "اسم العميل" else "العميل: مبيعات نقدية",
+                color = Color.Gray,
+                fontSize = 12.sp,
+                modifier = Modifier.weight(1f)
+            )
         }
 
         if (credit) {
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(6.dp))
             SearchChoiceField(
                 label = "ابحث عن العميل",
                 selected = customer,
@@ -701,11 +774,20 @@ private fun PosScreen(state: AppUiState, viewModel: AppViewModel) {
                 secondary = { "الرصيد الحالي: ${"%.2f".format(it.balance)}" },
                 onSelect = { customer = it }
             )
+            customer?.let {
+                Row(
+                    Modifier.fillMaxWidth().padding(top = 2.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("العميل: ${it.name}", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text(accountBalance(it.balance), fontSize = 12.sp, color = balanceColor(it.balance))
+                }
+            }
         }
 
-        Spacer(Modifier.height(12.dp))
-        Text("الأصناف السريعة", fontSize = 18.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(8.dp))
+        Text("الأصناف السريعة", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(5.dp))
         quickProducts.chunked(2).forEach { rowProducts ->
             Row(
                 Modifier.fillMaxWidth().padding(bottom = 10.dp),
@@ -726,9 +808,10 @@ private fun PosScreen(state: AppUiState, viewModel: AppViewModel) {
         OutlinedTextField(
             value = productQuery,
             onValueChange = { productQuery = it },
-            label = { Text("ابحث عن صنف بالاسم أو الباركود") },
+            label = { Text("بحث سريع عن صنف") },
             modifier = Modifier.fillMaxWidth(),
-            singleLine = true
+            singleLine = true,
+            textStyle = MaterialTheme.typography.bodySmall
         )
         if (searchResults.isNotEmpty()) {
             Spacer(Modifier.height(8.dp))
@@ -755,7 +838,7 @@ private fun PosScreen(state: AppUiState, viewModel: AppViewModel) {
         }
 
         Spacer(Modifier.height(14.dp))
-        Text("أصناف الفاتورة", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        Text("أصناف الفاتورة", fontSize = 16.sp, fontWeight = FontWeight.Bold)
         if (cart.isEmpty()) {
             Text("اضغط على أي صنف لإضافته إلى الفاتورة", color = Color.Gray, fontSize = 12.sp)
         } else {
@@ -802,7 +885,7 @@ private fun PosScreen(state: AppUiState, viewModel: AppViewModel) {
                 modifier = Modifier.fillMaxWidth().height(52.dp),
                 enabled = cart.isNotEmpty() && (!credit || customer != null)
             ) {
-                Text(if (credit) "حفظ الفاتورة الآجلة" else "حفظ الفاتورة النقدية")
+                Text("حفظ واعتماد الفاتورة")
             }
         }
         Spacer(Modifier.height(18.dp))
@@ -838,21 +921,21 @@ private fun InvoiceProductCard(
     onClick: () -> Unit
 ) {
     Card(
-        modifier = modifier.height(132.dp).clickable(onClick = onClick),
+        modifier = modifier.height(98.dp).clickable(onClick = onClick),
         shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (stock > 0) Color.White else Color(0xFFF1E7E7)
         )
     ) {
         Column(
-            Modifier.fillMaxSize().padding(12.dp),
+            Modifier.fillMaxSize().padding(8.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(product.name, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text("${"%.2f".format(product.price)} / ${product.unitName}", color = MaterialTheme.colorScheme.primary, fontSize = 12.sp)
+            Text(product.name, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text("${"%.2f".format(product.price)} / ${product.unitName}", color = MaterialTheme.colorScheme.primary, fontSize = 10.sp)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("المتاح", color = Color.Gray, fontSize = 11.sp)
-                Text("$stock", fontWeight = FontWeight.Bold, color = if (stock > 0) Color(0xFF0F766E) else Color.Red)
+                Text("المتاح", color = Color.Gray, fontSize = 10.sp)
+                Text("$stock", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = if (stock > 0) Color(0xFF0F766E) else Color.Red)
             }
         }
     }
@@ -868,16 +951,24 @@ private fun AddLineDialog(
     var quantity by remember { mutableStateOf("1") }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("إضافة ${product.name} للفاتورة") },
+        title = { Text("إضافة الصنف") },
         text = {
             Column(
                 Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+                Text(product.name, fontWeight = FontWeight.Bold)
+                Text("اختر الوحدة ثم اكتب العدد", color = Color.Gray, fontSize = 12.sp)
                 Text("الوحدة", fontWeight = FontWeight.Bold)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    AssistChip(onClick = { unit = product.unitName }, label = { Text(product.unitName) })
-                    AssistChip(onClick = { unit = product.caseUnitName }, label = { Text(product.caseUnitName) })
+                    AssistChip(
+                        onClick = { unit = product.unitName },
+                        label = { Text(if (unit == product.unitName) "✓ ${product.unitName}" else product.unitName) }
+                    )
+                    AssistChip(
+                        onClick = { unit = product.caseUnitName },
+                        label = { Text(if (unit == product.caseUnitName) "✓ ${product.caseUnitName}" else product.caseUnitName) }
+                    )
                 }
                 Text("سعر الوحدة: ${"%.2f".format(if (unit == product.caseUnitName) product.casePrice else product.price)}")
                 OutlinedTextField(
@@ -1058,8 +1149,13 @@ private fun UsersScreen(state: AppUiState, viewModel: AppViewModel) {
                     Row(Modifier.padding(16.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Column {
                             Text(user.displayName, fontWeight = FontWeight.Bold, fontSize = 17.sp)
-                            Text("اسم الدخول: ${user.username}", color = Color.Gray)
                             Text("كود المستخدم: ${user.userCode}", color = Color.Gray, fontSize = 12.sp)
+                            Text(
+                                if (user.role == "ADMIN") "مدير — جميع الصلاحيات"
+                                else "الصلاحيات مخصصة حسب إعداد المدير",
+                                color = Color.Gray,
+                                fontSize = 11.sp
+                            )
                         }
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             AssistChip(onClick = {}, label = { Text(if (user.role == "ADMIN") "مدير" else "كاشير") })
@@ -1086,16 +1182,42 @@ private fun UserEditorDialog(
     onDismiss: () -> Unit
 ) {
     var name by remember(user?.id) { mutableStateOf(user?.displayName ?: "") }
-    var username by remember(user?.id) { mutableStateOf(user?.username ?: "") }
     var userCode by remember(user?.id, defaultUserCode) { mutableStateOf(user?.userCode ?: defaultUserCode) }
     var password by remember(user?.id) { mutableStateOf("") }
+    var enabledSections by remember(user?.id) {
+        mutableStateOf(
+            AppSection.values().filter { user?.let { account -> account.canAccess(it.name) } ?: it in setOf(
+                AppSection.POS,
+                AppSection.INVOICES,
+                AppSection.REPORTS,
+                AppSection.CUSTOMERS,
+                AppSection.BONDS
+            ) }.map { it.name }.toSet()
+        )
+    }
+    var canWhatsapp by remember(user?.id) { mutableStateOf(user?.canWhatsapp ?: true) }
+    val permissions = UserPermissions(
+        canHome = "HOME" in enabledSections,
+        canPos = "POS" in enabledSections,
+        canInvoices = "INVOICES" in enabledSections,
+        canReports = "REPORTS" in enabledSections,
+        canProducts = "PRODUCTS" in enabledSections,
+        canUsers = "USERS" in enabledSections,
+        canTransfers = "TRANSFERS" in enabledSections,
+        canCustomers = "CUSTOMERS" in enabledSections,
+        canBonds = "BONDS" in enabledSections,
+        canSettlements = "SETTLEMENTS" in enabledSections,
+        canWhatsapp = canWhatsapp
+    )
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (user == null) "تسجيل كاشير" else "تعديل بيانات المستخدم") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                FormField("الاسم الظاهر", name) { name = it }
-                FormField("اسم المستخدم", username) { username = it }
+            Column(
+                Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                FormField("اسم المستخدم الظاهر", name) { name = it }
                 FormField("كود المستخدم الرقمي", userCode, numeric = true) { userCode = it }
                 OutlinedTextField(
                     password,
@@ -1106,19 +1228,49 @@ private fun UserEditorDialog(
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword)
                 )
+                Divider()
+                Text("صلاحيات الشاشات", fontWeight = FontWeight.Bold)
+                Text("اضغط على اسم الشاشة أو علامة الصح لتفعيلها للمستخدم.", color = Color.Gray, fontSize = 12.sp)
+                AppSection.values().forEach { screen ->
+                    Row(
+                        Modifier.fillMaxWidth().clickable {
+                            enabledSections = enabledSections.toMutableSet().also {
+                                if (!it.add(screen.name)) it.remove(screen.name)
+                            }
+                        },
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = screen.name in enabledSections,
+                            onCheckedChange = { checked ->
+                                enabledSections = enabledSections.toMutableSet().also {
+                                    if (checked) it.add(screen.name) else it.remove(screen.name)
+                                }
+                            }
+                        )
+                        Text(screen.title)
+                    }
+                }
+                Row(
+                    Modifier.fillMaxWidth().clickable { canWhatsapp = !canWhatsapp },
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Checkbox(checked = canWhatsapp, onCheckedChange = { canWhatsapp = it })
+                    Text("إرسال WhatsApp في كل الشاشات")
+                }
             }
         },
         confirmButton = {
             Button(
                 onClick = {
                     if (user == null) {
-                        viewModel.createUser(username, userCode, password, name)
+                        viewModel.createUser(name, userCode, password, permissions)
                     } else {
-                        viewModel.updateUser(user, username, userCode, password, name)
+                        viewModel.updateUser(user, name, userCode, password, permissions)
                     }
                     onDismiss()
                 },
-                enabled = name.isNotBlank() && username.isNotBlank() && userCode.isNotBlank() &&
+                enabled = name.isNotBlank() && userCode.isNotBlank() &&
                     (user != null || password.isNotBlank())
             ) { Text(if (user == null) "إنشاء" else "حفظ التعديلات") }
         },
@@ -1161,10 +1313,17 @@ private fun TransfersScreen(state: AppUiState, viewModel: AppViewModel) {
 }
 
 @Composable
-private fun CustomersScreen(state: AppUiState, viewModel: AppViewModel) {
+private fun CustomersScreen(
+    state: AppUiState,
+    viewModel: AppViewModel,
+    onIssueInvoice: (CustomerEntity) -> Unit,
+    onIssueBond: (CustomerEntity) -> Unit
+) {
     var showAdd by remember { mutableStateOf(false) }
     var query by rememberSaveable { mutableStateOf("") }
-    var selectedCustomer by remember { mutableStateOf<CustomerEntity?>(null) }
+    var statementCustomer by remember { mutableStateOf<CustomerEntity?>(null) }
+    var statementRows by remember { mutableStateOf<List<CustomerStatementRow>?>(null) }
+    val nextCustomerCode = (state.customers.mapNotNull { it.customerCode.toIntOrNull() }.maxOrNull() ?: 0) + 1
     val matches = state.customers.filter {
         query.isNotBlank() && (
             it.name.contains(query.trim(), ignoreCase = true) ||
@@ -1172,11 +1331,14 @@ private fun CustomersScreen(state: AppUiState, viewModel: AppViewModel) {
             )
     }
     val context = LocalContext.current
+    val canWhatsapp = state.user?.role == "ADMIN" || state.user?.canWhatsapp == true
+    val canIssueInvoice = state.user?.canAccess(AppSection.POS.name) == true
+    val canIssueBond = state.user?.canAccess(AppSection.BONDS.name) == true
     Column(Modifier.fillMaxSize().padding(16.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Column {
-                Text("سجل العملاء", fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                Text("الأرصدة والبيانات جاهزة للبيع الآجل والسندات", color = Color.Gray, fontSize = 12.sp)
+                Text("العملاء", fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                Text("ابحث بالاسم ثم اختر العملية المطلوبة", color = Color.Gray, fontSize = 12.sp)
             }
             FloatingActionButton(onClick = { showAdd = true }) { Icon(Icons.Default.Add, "إضافة") }
         }
@@ -1197,30 +1359,56 @@ private fun CustomersScreen(state: AppUiState, viewModel: AppViewModel) {
                         Modifier.fillMaxWidth().clickable { selectedCustomer = customer },
                         shape = RoundedCornerShape(16.dp)
                     ) {
-                        Row(Modifier.padding(16.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Column {
-                                Text(customer.name, fontWeight = FontWeight.Bold, fontSize = 17.sp)
-                                Text(customer.mobile.ifBlank { "لا يوجد رقم هاتف" }, color = Color.Gray)
-                                Text(
-                                    "آخر حركة: ${lastMovement?.let(::formatDate) ?: "لا توجد حركة"}",
-                                    color = Color.Gray,
-                                    fontSize = 12.sp
-                                )
-                            }
-                            Column(horizontalAlignment = Alignment.End) {
-                                Text("الرصيد", color = Color.Gray, fontSize = 11.sp)
+                        Column(Modifier.padding(12.dp).fillMaxWidth()) {
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column(Modifier.weight(1f)) {
+                                    Text(customer.name, fontWeight = FontWeight.Bold, fontSize = 17.sp)
+                                    Text(
+                                        customer.mobile.ifBlank { "لا يوجد رقم هاتف" },
+                                        color = Color.Gray,
+                                        fontSize = 12.sp
+                                    )
+                                }
                                 Text(
                                     accountBalance(customer.balance),
                                     color = balanceColor(customer.balance),
-                                    fontWeight = FontWeight.Bold
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp
                                 )
-                                TextButton(onClick = {
-                                    viewModel.loadCustomerStatement(customer.id) { rows ->
-                                        PrintAndShare.shareStatement(context, customer, rows)
-                                    }
-                                }) {
-                                    Text("كشف حساب")
+                            }
+                            Spacer(Modifier.height(6.dp))
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                if (canIssueInvoice) {
+                                    OutlinedButton(
+                                        onClick = { onIssueInvoice(customer) },
+                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                                        modifier = Modifier.weight(1f)
+                                    ) { Text("إصدار فاتورة", fontSize = 11.sp) }
                                 }
+                                if (canIssueBond) {
+                                    OutlinedButton(
+                                        onClick = { onIssueBond(customer) },
+                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                                        modifier = Modifier.weight(1f)
+                                    ) { Text("سند قبض", fontSize = 11.sp) }
+                                }
+                                OutlinedButton(
+                                    onClick = {
+                                        statementCustomer = customer
+                                        statementRows = null
+                                        viewModel.loadCustomerStatement(customer.id) { rows ->
+                                            statementRows = rows
+                                        }
+                                    },
+                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                                    modifier = Modifier.weight(1f)
+                                ) { Text("كشف حساب", fontSize = 11.sp) }
                             }
                         }
                     }
@@ -1228,25 +1416,28 @@ private fun CustomersScreen(state: AppUiState, viewModel: AppViewModel) {
             }
         }
     }
-    selectedCustomer?.let { customer ->
-        CustomerSummaryDialog(
-            customer = customer,
-            lastMovement = state.customerLastMovement[customer.id],
-            onStatement = {
-                viewModel.loadCustomerStatement(customer.id) { rows ->
-                    PrintAndShare.shareStatement(context, customer, rows)
-                }
-                selectedCustomer = null
+    if (statementCustomer != null && statementRows != null) {
+        CustomerStatementDialog(
+            customer = statementCustomer!!,
+            rows = statementRows!!,
+            canWhatsapp = canWhatsapp,
+            onSharePdf = { PrintAndShare.shareStatement(context, statementCustomer!!, statementRows!!) },
+            onShareWhatsapp = {
+                PrintAndShare.shareStatementToWhatsapp(context, statementCustomer!!, statementRows!!)
             },
-            onDismiss = { selectedCustomer = null }
+            onDismiss = {
+                statementCustomer = null
+                statementRows = null
+            }
         )
     }
-    if (showAdd) AddCustomerDialog(viewModel) { showAdd = false }
+    if (showAdd) AddCustomerDialog(viewModel, nextCustomerCode.toString()) { showAdd = false }
 }
 
 @Composable
-private fun AddCustomerDialog(viewModel: AppViewModel, onDismiss: () -> Unit) {
+private fun AddCustomerDialog(viewModel: AppViewModel, defaultCode: String, onDismiss: () -> Unit) {
     var name by remember { mutableStateOf("") }
+    var customerCode by remember { mutableStateOf(defaultCode) }
     var mobile by remember { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1254,25 +1445,45 @@ private fun AddCustomerDialog(viewModel: AppViewModel, onDismiss: () -> Unit) {
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 FormField("اسم العميل", name) { name = it }
+                FormField("كود العميل الفريد", customerCode, numeric = true) { customerCode = it }
                 FormField("رقم الجوال", mobile, numeric = true) { mobile = it }
             }
         },
         confirmButton = {
-            Button(onClick = { viewModel.addCustomer(name, mobile); onDismiss() }, enabled = name.isNotBlank()) { Text("حفظ") }
+            Button(
+                onClick = { viewModel.addCustomer(name, customerCode, mobile); onDismiss() },
+                enabled = name.isNotBlank() && customerCode.isNotBlank()
+            ) { Text("حفظ") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("إلغاء") } }
     )
 }
 
 @Composable
-private fun BondsScreen(state: AppUiState, viewModel: AppViewModel) {
+private fun BondsScreen(
+    state: AppUiState,
+    viewModel: AppViewModel,
+    initialCustomerId: Long? = null,
+    onInitialCustomerConsumed: () -> Unit = {}
+) {
     var customer by remember { mutableStateOf<CustomerEntity?>(null) }
     var type by remember { mutableStateOf("قبض") }
     var amount by remember { mutableStateOf("") }
     var note by remember { mutableStateOf("") }
+    LaunchedEffect(initialCustomerId, state.customers) {
+        initialCustomerId?.let { id ->
+            state.customers.firstOrNull { it.id == id }?.let {
+                customer = it
+                onInitialCustomerConsumed()
+            }
+        }
+    }
     Column(Modifier.fillMaxSize().padding(16.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("السندات المالية", fontSize = 22.sp, fontWeight = FontWeight.Bold)
-        Text("سند القبض يقلل الرصيد، وسند الصرف يضيف حركة مدينة على حساب العميل.", color = Color.Gray)
+        Text("سندات القبض", fontSize = 22.sp, fontWeight = FontWeight.Bold)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text("رقم السند: يصدر عند الاعتماد", color = Color.Gray, fontSize = 12.sp)
+            Text("التاريخ: ${formatDate(System.currentTimeMillis())}", color = Color.Gray, fontSize = 12.sp)
+        }
         SearchChoiceField(
             label = "ابحث عن العميل",
             selected = customer,
@@ -1282,8 +1493,8 @@ private fun BondsScreen(state: AppUiState, viewModel: AppViewModel) {
             onSelect = { customer = it }
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            AssistChip(onClick = { type = "قبض" }, label = { Text(if (type == "قبض") "✓ سند قبض" else "سند قبض") })
-            AssistChip(onClick = { type = "صرف" }, label = { Text(if (type == "صرف") "✓ سند صرف" else "سند صرف") })
+            AssistChip(onClick = { type = "قبض" }, label = { Text(if (type == "قبض") "✓ قبض" else "قبض") })
+            AssistChip(onClick = { type = "صرف" }, label = { Text(if (type == "صرف") "✓ صرف" else "صرف") })
         }
         FormField("المبلغ", amount, numeric = true) { amount = it }
         FormField("البيان", note) { note = it }
@@ -1291,7 +1502,7 @@ private fun BondsScreen(state: AppUiState, viewModel: AppViewModel) {
             onClick = { if (customer != null) viewModel.bond(customer!!.id, type, amount.toDoubleOrNull() ?: 0.0, note) },
             modifier = Modifier.fillMaxWidth().height(52.dp),
             enabled = customer != null && (amount.toDoubleOrNull() ?: 0.0) > 0
-        ) { Icon(Icons.Default.ReceiptLong, null); Spacer(Modifier.width(8.dp)); Text("حفظ السند") }
+        ) { Icon(Icons.Default.ReceiptLong, null); Spacer(Modifier.width(8.dp)); Text("حفظ واعتماد السند") }
     }
 }
 
@@ -1385,6 +1596,63 @@ private fun <T> SearchChoiceField(
 }
 
 @Composable
+private fun CustomerStatementDialog(
+    customer: CustomerEntity,
+    rows: List<CustomerStatementRow>,
+    canWhatsapp: Boolean,
+    onSharePdf: () -> Unit,
+    onShareWhatsapp: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("كشف حساب ${customer.name}") },
+        text = {
+            Column(
+                Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(accountBalance(customer.balance), color = balanceColor(customer.balance), fontWeight = FontWeight.Bold)
+                if (rows.isEmpty()) {
+                    Text("لا توجد حركات مالية لهذا العميل", color = Color.Gray)
+                } else {
+                    rows.forEach { row ->
+                        Card(shape = RoundedCornerShape(10.dp)) {
+                            Column(Modifier.fillMaxWidth().padding(9.dp)) {
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                    Text(row.type, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                    Text(formatDate(row.createdAt), fontSize = 10.sp, color = Color.Gray)
+                                }
+                                Text("المرجع: ${row.reference}", fontSize = 11.sp, color = Color.Gray)
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                    Text("المبلغ: ${"%.2f".format(row.amount)}", fontSize = 11.sp)
+                                    Text(accountBalance(row.balanceAfter), fontSize = 11.sp, color = balanceColor(row.balanceAfter))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                TextButton(onClick = onSharePdf) {
+                    Text("PDF", fontSize = 11.sp)
+                }
+                if (canWhatsapp) {
+                    TextButton(onClick = onShareWhatsapp) {
+                        Icon(Icons.Default.Send, contentDescription = null)
+                        Spacer(Modifier.width(3.dp))
+                        Text("WhatsApp", fontSize = 11.sp)
+                    }
+                }
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("إغلاق") } }
+    )
+}
+
+@Composable
 private fun CustomerSummaryDialog(
     customer: CustomerEntity,
     lastMovement: Long?,
@@ -1413,30 +1681,56 @@ private fun CustomerSummaryDialog(
 }
 
 @Composable
-private fun SaleReceiptDialog(receipt: SaleReceipt, onDismiss: () -> Unit) {
+private fun SaleReceiptDialog(
+    receipt: SaleReceipt,
+    canWhatsapp: Boolean,
+    onDismiss: () -> Unit
+) {
     val context = LocalContext.current
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("تم حفظ الفاتورة") },
+        title = { Text("فاتورة مبيعات") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("عميلنا العزيز ${receipt.customer?.name ?: "عميل نقدي"}")
-                Text("عليكم فاتورة بمبلغ: ${"%.2f".format(receipt.invoice.total)}")
-                Text("رصيدكم الإجمالي: ${"%.2f".format(receipt.invoice.newBalance)}")
-                Text("رقم الفاتورة: ${receipt.invoice.id}", color = Color.Gray, fontSize = 12.sp)
+            Column(
+                Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(5.dp)
+            ) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("رقم: ${receipt.invoice.id}", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Text(formatDate(receipt.invoice.createdAt), fontSize = 10.sp, color = Color.Gray)
+                }
+                Text("العميل: ${receipt.customer?.name ?: "مبيعات نقدية"}", fontSize = 12.sp)
+                Divider()
+                receipt.lines.forEach { line ->
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("${line.productName} • ${line.quantity} ${line.unitName}", fontSize = 11.sp)
+                        Text("%.2f".format(line.lineTotal), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+                Divider()
+                Text("مبلغ الفاتورة: ${"%.2f".format(receipt.invoice.total)}", fontWeight = FontWeight.Bold)
+                Text("رصيدكم السابق: ${"%.2f".format(receipt.invoice.previousBalance)}", fontSize = 11.sp)
+                Text(
+                    accountBalance(receipt.invoice.newBalance),
+                    color = balanceColor(receipt.invoice.newBalance),
+                    fontWeight = FontWeight.Bold
+                )
             }
         },
         confirmButton = {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                TextButton(
-                    onClick = { PrintAndShare.whatsapp(context, receipt.customer, receipt.invoice) },
-                    enabled = receipt.customer != null
-                ) {
-                    Icon(Icons.Default.Send, contentDescription = null)
-                    Spacer(Modifier.width(4.dp))
-                    Text("واتساب")
+                if (canWhatsapp && receipt.customer != null) {
+                    TextButton(onClick = { PrintAndShare.whatsapp(context, receipt.customer, receipt.invoice) }) {
+                        Icon(Icons.Default.Send, contentDescription = null)
+                        Spacer(Modifier.width(4.dp))
+                        Text("واتساب")
+                    }
                 }
-                BluetoothPrintButton(receipt.invoice, receipt.customer?.name ?: "عميل نقدي")
+                BluetoothPrintButton(
+                    invoice = receipt.invoice,
+                    customerName = receipt.customer?.name ?: "مبيعات نقدية",
+                    lines = receipt.lines
+                )
             }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("إغلاق") } }
@@ -1444,28 +1738,42 @@ private fun SaleReceiptDialog(receipt: SaleReceipt, onDismiss: () -> Unit) {
 }
 
 @Composable
-private fun BondReceiptDialog(receipt: BondReceipt, onDismiss: () -> Unit) {
+private fun BondReceiptDialog(
+    receipt: BondReceipt,
+    canWhatsapp: Boolean,
+    onDismiss: () -> Unit
+) {
     val context = LocalContext.current
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("تم حفظ السند") },
+        title = { Text("سند ${receipt.bond.type} معتمد") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("عميلنا العزيز ${receipt.customer.name}")
-                if (receipt.bond.type == "قبض") {
-                    Text("تم سداد مبلغ: ${"%.2f".format(receipt.bond.amount)}")
-                } else {
-                    Text("تم تسجيل سند صرف بمبلغ: ${"%.2f".format(receipt.bond.amount)}")
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("رقم: ${receipt.bond.id}", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Text(formatDate(receipt.bond.createdAt), fontSize = 10.sp, color = Color.Gray)
                 }
-                Text("برقم السند: ${receipt.bond.id}")
-                Text(accountBalance(receipt.customer.balance), color = balanceColor(receipt.customer.balance))
+                Text("العميل: ${receipt.customer.name}")
+                Text("رصيدكم السابق: ${"%.2f".format(receipt.bond.previousBalance)}", fontSize = 12.sp)
+                Text("مبلغ السند: ${"%.2f".format(receipt.bond.amount)}", fontWeight = FontWeight.Bold)
+                Text(
+                    accountBalance(receipt.bond.newBalance),
+                    color = balanceColor(receipt.bond.newBalance),
+                    fontWeight = FontWeight.Bold
+                )
+                Text("البيان: ${receipt.bond.note.ifBlank { "بدون بيان" }}", fontSize = 11.sp)
             }
         },
         confirmButton = {
-            TextButton(onClick = { PrintAndShare.whatsappBond(context, receipt.customer, receipt.bond) }) {
-                Icon(Icons.Default.Send, contentDescription = null)
-                Spacer(Modifier.width(4.dp))
-                Text("إرسال عبر واتساب")
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                if (canWhatsapp) {
+                    TextButton(onClick = { PrintAndShare.whatsappBond(context, receipt.customer, receipt.bond) }) {
+                        Icon(Icons.Default.Send, contentDescription = null)
+                        Spacer(Modifier.width(4.dp))
+                        Text("واتساب")
+                    }
+                }
+                BluetoothBondPrintButton(receipt.customer, receipt.bond)
             }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("إغلاق") } }
@@ -1473,7 +1781,11 @@ private fun BondReceiptDialog(receipt: BondReceipt, onDismiss: () -> Unit) {
 }
 
 @Composable
-private fun BluetoothPrintButton(invoice: InvoiceEntity, customerName: String) {
+private fun BluetoothPrintButton(
+    invoice: InvoiceEntity,
+    customerName: String,
+    lines: List<InvoiceLineEntity> = emptyList()
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var showPrinters by remember { mutableStateOf(false) }
@@ -1518,11 +1830,80 @@ private fun BluetoothPrintButton(invoice: InvoiceEntity, customerName: String) {
                                 onClick = {
                                     showPrinters = false
                                     scope.launch(Dispatchers.IO) {
-                                        val result = PrintAndShare.printBluetooth(device, invoice, customerName)
+                                        val result = PrintAndShare.printBluetooth(device, invoice, customerName, lines)
                                         withContext(Dispatchers.Main) {
                                             Toast.makeText(
                                                 context,
                                                 result.exceptionOrNull()?.message ?: "تم إرسال الفاتورة إلى الطابعة",
+                                                Toast.LENGTH_LONG
+                                            ).show()
+                                        }
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(device.name ?: device.address)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { showPrinters = false }) { Text("إغلاق") } }
+        )
+    }
+}
+
+@Composable
+private fun BluetoothBondPrintButton(customer: CustomerEntity, bond: com.khamrnet.app.data.FinancialBondEntity) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var showPrinters by remember { mutableStateOf(false) }
+    var printers by remember { mutableStateOf<List<BluetoothDevice>>(emptyList()) }
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            printers = PrintAndShare.pairedPrinters()
+            showPrinters = true
+        } else {
+            Toast.makeText(context, "يلزم السماح بالوصول إلى Bluetooth للطباعة", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    TextButton(onClick = {
+        val needsPermission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED
+        if (needsPermission) {
+            permissionLauncher.launch(Manifest.permission.BLUETOOTH_CONNECT)
+        } else {
+            printers = PrintAndShare.pairedPrinters()
+            showPrinters = true
+        }
+    }) {
+        Icon(Icons.Default.ReceiptLong, contentDescription = null)
+        Spacer(Modifier.width(4.dp))
+        Text("طباعة")
+    }
+
+    if (showPrinters) {
+        AlertDialog(
+            onDismissRequest = { showPrinters = false },
+            title = { Text("اختر الطابعة الحرارية") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    if (printers.isEmpty()) {
+                        Text("لا توجد طابعة مقترنة. اقترن بالطابعة من إعدادات Bluetooth أولًا.")
+                    } else {
+                        printers.forEach { device ->
+                            OutlinedButton(
+                                onClick = {
+                                    showPrinters = false
+                                    scope.launch(Dispatchers.IO) {
+                                        val result = PrintAndShare.printBondBluetooth(device, customer, bond)
+                                        withContext(Dispatchers.Main) {
+                                            Toast.makeText(
+                                                context,
+                                                result.exceptionOrNull()?.message ?: "تم إرسال السند إلى الطابعة",
                                                 Toast.LENGTH_LONG
                                             ).show()
                                         }
