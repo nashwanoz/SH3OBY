@@ -18,8 +18,9 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -55,6 +56,7 @@ fun UsersScreen(state: AppUiState, viewModel: AppViewModel) {
     var showAdd by remember { mutableStateOf(false) }
     var editingUser by remember { mutableStateOf<UserEntity?>(null) }
     val nextUserCode = (state.users.mapNotNull { it.userCode.toIntOrNull() }.maxOrNull() ?: 1) + 1
+    
     Column(Modifier.fillMaxSize().padding(16.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Column {
@@ -101,10 +103,10 @@ private fun UserEditorDialog(user: UserEntity?, viewModel: AppViewModel, default
     var password by remember(user?.id) { mutableStateOf("") }
     var enabledSections by remember(user?.id) {
         mutableStateOf(
-            AppSection.values().filter {
-                user?.let { account -> account.canAccess(it.name) } ?: it in setOf(
+            AppSection.entries.filter {
+                user?.let { account -> account.canAccess(it.name) } ?: (it in setOf(
                     AppSection.POS, AppSection.INVOICES, AppSection.REPORTS, AppSection.CUSTOMERS, AppSection.BONDS
-                )
+                ))
             }.map { it.name }.toSet()
         )
     }
@@ -130,18 +132,18 @@ private fun UserEditorDialog(user: UserEntity?, viewModel: AppViewModel, default
                 FormField("اسم المستخدم الظاهر", name) { name = it }
                 FormField("كود المستخدم الرقمي", userCode, numeric = true) { userCode = it }
                 OutlinedTextField(
-                    password,
-                    { password = it.filter(Char::isDigit) },
+                    value = password,
+                    onValueChange = { password = it.filter(Char::isDigit) },
                     label = { Text(if (user == null) "كلمة المرور الرقمية" else "كلمة مرور جديدة (اختياري)") },
                     modifier = Modifier.fillMaxWidth(),
                     visualTransformation = PasswordVisualTransformation(),
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword)
                 )
-                Divider()
+                HorizontalDivider()
                 Text("صلاحيات الشاشات", fontWeight = FontWeight.Bold)
                 Text("اضغط على اسم الشاشة أو علامة الصح لتفعيلها للمستخدم.", color = Color.Gray, fontSize = 12.sp)
-                AppSection.values().forEach { screen ->
+                AppSection.entries.forEach { screen ->
                     Row(
                         Modifier.fillMaxWidth().clickable {
                             enabledSections = enabledSections.toMutableSet().also {
@@ -158,28 +160,28 @@ private fun UserEditorDialog(user: UserEntity?, viewModel: AppViewModel, default
                                 }
                             }
                         )
-                        Text(screen.title)
+                        Text(screen.title, modifier = Modifier.padding(start = 8.dp))
                     }
-                }
-                Row(
-                    Modifier.fillMaxWidth().clickable { canWhatsapp = !canWhatsapp },
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Checkbox(checked = canWhatsapp, onCheckedChange = { canWhatsapp = it })
-                    Text("إرسال WhatsApp في كل الشاشات")
                 }
             }
         },
         confirmButton = {
             Button(
                 onClick = {
-                    if (user == null) viewModel.createUser(name, userCode, password, permissions)
-                    else viewModel.updateUser(user, name, userCode, password, permissions)
+                    if (user == null) {
+                        viewModel.addUser(name, userCode, password, permissions)
+                    } else {
+                        viewModel.updateUser(user.id, name, userCode, password.ifBlank { null }, permissions)
+                    }
                     onDismiss()
                 },
                 enabled = name.isNotBlank() && userCode.isNotBlank() && (user != null || password.isNotBlank())
-            ) { Text(if (user == null) "إنشاء" else "حفظ التعديلات") }
+            ) {
+                Text("حفظ")
+            }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("إلغاء") } }
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("إلغاء") }
+        }
     )
 }
