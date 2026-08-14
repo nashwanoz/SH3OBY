@@ -21,7 +21,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         FinancialBondEntity::class,
         SettlementEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -45,7 +45,7 @@ abstract class AppDatabase : RoomDatabase() {
                 AppDatabase::class.java,
                 "khamr-net.db"
             )
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                 .fallbackToDestructiveMigration()
                 .build()
                 .also { instance = it }
@@ -56,6 +56,30 @@ abstract class AppDatabase : RoomDatabase() {
                 database.execSQL("ALTER TABLE users ADD COLUMN userCode TEXT NOT NULL DEFAULT ''")
                 database.execSQL("UPDATE users SET userCode = CAST(id AS TEXT) WHERE userCode = ''")
                 database.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_users_userCode ON users(userCode)")
+            }
+        }
+
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE users ADD COLUMN canHome INTEGER NOT NULL DEFAULT 1")
+                database.execSQL("ALTER TABLE users ADD COLUMN canPos INTEGER NOT NULL DEFAULT 1")
+                database.execSQL("ALTER TABLE users ADD COLUMN canInvoices INTEGER NOT NULL DEFAULT 1")
+                database.execSQL("ALTER TABLE users ADD COLUMN canReports INTEGER NOT NULL DEFAULT 1")
+                database.execSQL("ALTER TABLE users ADD COLUMN canProducts INTEGER NOT NULL DEFAULT 0")
+                database.execSQL("ALTER TABLE users ADD COLUMN canUsers INTEGER NOT NULL DEFAULT 0")
+                database.execSQL("ALTER TABLE users ADD COLUMN canTransfers INTEGER NOT NULL DEFAULT 0")
+                database.execSQL("ALTER TABLE users ADD COLUMN canCustomers INTEGER NOT NULL DEFAULT 1")
+                database.execSQL("ALTER TABLE users ADD COLUMN canBonds INTEGER NOT NULL DEFAULT 1")
+                database.execSQL("ALTER TABLE users ADD COLUMN canSettlements INTEGER NOT NULL DEFAULT 0")
+                database.execSQL("ALTER TABLE users ADD COLUMN canWhatsapp INTEGER NOT NULL DEFAULT 1")
+                database.execSQL("ALTER TABLE customers ADD COLUMN customerCode TEXT NOT NULL DEFAULT ''")
+                database.execSQL("UPDATE customers SET customerCode = 'C' || id WHERE customerCode = ''")
+                database.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_customers_customerCode ON customers(customerCode)")
+                database.execSQL("ALTER TABLE financial_bonds ADD COLUMN previousBalance REAL NOT NULL DEFAULT 0")
+                database.execSQL("ALTER TABLE financial_bonds ADD COLUMN newBalance REAL NOT NULL DEFAULT 0")
+                database.execSQL(
+                    "UPDATE financial_bonds SET newBalance = CASE WHEN type = 'قبض' THEN -amount ELSE amount END"
+                )
             }
         }
     }
