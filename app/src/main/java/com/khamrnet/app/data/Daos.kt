@@ -29,11 +29,32 @@ interface UserDao {
     @Query(
         """
         UPDATE users
-        SET username = :username, userCode = :userCode, displayName = :displayName
+        SET username = :username, userCode = :userCode, displayName = :displayName,
+            canHome = :canHome, canPos = :canPos, canInvoices = :canInvoices,
+            canReports = :canReports, canProducts = :canProducts, canUsers = :canUsers,
+            canTransfers = :canTransfers, canCustomers = :canCustomers,
+            canBonds = :canBonds, canSettlements = :canSettlements,
+            canWhatsapp = :canWhatsapp
         WHERE id = :id
         """
     )
-    suspend fun updateProfile(id: Long, username: String, userCode: String, displayName: String)
+    suspend fun updateProfile(
+        id: Long,
+        username: String,
+        userCode: String,
+        displayName: String,
+        canHome: Boolean,
+        canPos: Boolean,
+        canInvoices: Boolean,
+        canReports: Boolean,
+        canProducts: Boolean,
+        canUsers: Boolean,
+        canTransfers: Boolean,
+        canCustomers: Boolean,
+        canBonds: Boolean,
+        canSettlements: Boolean,
+        canWhatsapp: Boolean
+    )
 
     @Query("UPDATE users SET passwordHash = :passwordHash WHERE id = :id")
     suspend fun updatePassword(id: Long, passwordHash: String)
@@ -58,6 +79,9 @@ interface CashBoxDao {
 
     @Query("SELECT * FROM cash_boxes WHERE ownerUserId = :userId LIMIT 1")
     suspend fun forUser(userId: Long): CashBoxEntity?
+
+    @Query("SELECT * FROM cash_boxes WHERE ownerUserId IS NULL LIMIT 1")
+    suspend fun main(): CashBoxEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(box: CashBoxEntity)
@@ -135,6 +159,9 @@ interface CustomerDao {
 
     @Query("SELECT * FROM customers WHERE id = :id LIMIT 1")
     suspend fun find(id: Long): CustomerEntity?
+
+    @Query("SELECT * FROM customers WHERE customerCode = :customerCode LIMIT 1")
+    suspend fun findByCode(customerCode: String): CustomerEntity?
 
     @Insert
     suspend fun insert(customer: CustomerEntity): Long
