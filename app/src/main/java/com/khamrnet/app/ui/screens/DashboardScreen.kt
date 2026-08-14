@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -32,6 +33,7 @@ import com.khamrnet.app.ui.AppUiState
 fun DashboardScreen(state: AppUiState, onNavigate: (AppSection) -> Unit) {
     val stats = state.stats
     val isAdmin = state.user?.role == "ADMIN"
+    
     val actions = (if (isAdmin) {
         listOf(
             AppSection.POS, AppSection.INVOICES, AppSection.REPORTS,
@@ -41,11 +43,15 @@ fun DashboardScreen(state: AppUiState, onNavigate: (AppSection) -> Unit) {
     } else {
         listOf(AppSection.POS, AppSection.INVOICES, AppSection.REPORTS, AppSection.CUSTOMERS, AppSection.BONDS)
     }).filter { state.user?.canAccess(it.name) == true }
+
+    val chunkedActions = actions.chunked(2)
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(18.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
+        // 1. كارت الترحيب الرئيسي
         item {
             Card(
                 colors = CardDefaults.cardColors(containerColor = Color(0xFF102A43)),
@@ -59,23 +65,31 @@ fun DashboardScreen(state: AppUiState, onNavigate: (AppSection) -> Unit) {
                 }
             }
         }
+        
+        // 2. كروت الإحصائيات (مبيعات اليوم والعهدة)
         item {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 StatCard("مبيعات اليوم", "%.2f".format(stats.todaySales), Color(0xFF0F766E), Modifier.weight(1f))
                 StatCard("العهدة / العجز", "%.2f".format(stats.carriedDifference), Color(0xFFD99A2B), Modifier.weight(1f))
             }
         }
+        
+        // 3. عنوان الوصول السريع
         item {
             Text("الوصول السريع", fontSize = 19.sp, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(10.dp))
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                actions.chunked(2).forEach { rowItems ->
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        rowItems.forEach { item ->
-                            DashboardActionCard(item, Modifier.weight(1f)) { onNavigate(item) }
-                        }
-                        if (rowItems.size == 1) Spacer(Modifier.weight(1f))
-                    }
+        }
+        
+        // 4. عرض الأزرار كعناصر مستقلة ومجمدة داخل الـ LazyColumn لتحسين الأداء والخفة
+        items(chunkedActions) { rowItems ->
+            Row(
+                modifier = Modifier.fillMaxWidth(), 
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                rowItems.forEach { item ->
+                    DashboardActionCard(item, Modifier.weight(1f)) { onNavigate(item) }
+                }
+                if (rowItems.size == 1) {
+                    Spacer(Modifier.weight(1f))
                 }
             }
         }
