@@ -65,7 +65,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.ui.text.input.KeyboardActions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -258,7 +258,7 @@ private fun MainShell(state: AppUiState, viewModel: AppViewModel, snackbar: Snac
         ?: available.firstOrNull { it == AppSection.POS }
         ?: available.firstOrNull()
         ?: AppSection.POS
-    var selected by rememberSaveable { mutableStateOf(defaultSection.name) }
+    var selected by rememberSaveable(state.user?.id) { mutableStateOf(defaultSection.name) }
     var showSectionMenu by remember { mutableStateOf(false) }
     var invoiceCustomerId by rememberSaveable { mutableStateOf<Long?>(null) }
     var bondCustomerId by rememberSaveable { mutableStateOf<Long?>(null) }
