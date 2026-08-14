@@ -65,7 +65,7 @@ fun TransfersScreen(state: AppUiState, viewModel: AppViewModel) {
                     viewModel.transferStock(cashier!!.id, product!!.id, quantity.toIntOrNull() ?: 0)
                 }
             },
-            modifier = Modifier.fillMaxSize().height(52.dp),
+            modifier = Modifier.fillMaxWidth().height(52.dp),
             enabled = cashier != null && product != null && (quantity.toIntOrNull() ?: 0) > 0
         ) {
             Icon(Icons.Default.SwapHoriz, null)
