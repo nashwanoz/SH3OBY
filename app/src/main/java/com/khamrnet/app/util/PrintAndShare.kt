@@ -22,39 +22,55 @@ import java.nio.charset.Charset
 import java.util.UUID
 
 object PrintAndShare {
+    
+    // 1. دالة مشاركة الفاتورة المطورة والمستقرة للواتساب
     fun whatsapp(context: Context, customer: CustomerEntity?, invoice: InvoiceEntity) {
         val text = """
-            عزيزي العميل ${customer?.name ?: "مبيعات نقدية"}
-            عليكم فاتورة مبيعات رقم ${invoice.id}
-            مبلغ الفاتورة: ${format(invoice.total)}
+            عميلنا العزيز: ${customer?.name ?: "مبيعات نقدية"}
+            عليكم فاتورة مبيعات بمبلغ: ${format(invoice.total)}
             رصيدكم السابق: ${format(invoice.previousBalance)}
-            ${balanceLabel(invoice.newBalance)}
+            الإجمالي بعد الفاتورة: ${format(invoice.newBalance)}
         """.trimIndent()
-        val intent = Intent(Intent.ACTION_SENDTO).apply {
-            data = Uri.parse("smsto:${customer?.mobile ?: ""}")
-            putExtra("sms_body", text)
+        
+        val cleanMobile = customer?.mobile?.filter { it.isDigit() }.orEmpty()
+        val url = "https://whatsapp.com{Uri.encode(text)}"
+        
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            data = Uri.parse(url)
             setPackage("com.whatsapp")
         }
-        runCatching { context.startActivity(intent) }.getOrElse {
-            context.startActivity(Intent.createChooser(intent, "مشاركة الفاتورة"))
+        
+        runCatching { 
+            context.startActivity(intent) 
+        }.getOrElse {
+            val backupIntent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+            context.startActivity(Intent.createChooser(backupIntent, "مشاركة الفاتورة عبر"))
         }
     }
 
+    // 2. دالة مشاركة السندات المطورة والمستقرة للواتساب
     fun whatsappBond(context: Context, customer: CustomerEntity, bond: FinancialBondEntity) {
         val text = """
-            عزيزي العميل ${customer.name}
-            ${if (bond.type == "قبض") "تم استلام سند قبض" else "تم تسجيل سند صرف"} رقم ${bond.id}
+            عميلنا العزيز: ${customer.name}
+            ${if (bond.type == "قبض") "تم استلام سند قبض" else "تم تسجيل سند صرف"} رقم: ${bond.id}
             مبلغ السند: ${format(bond.amount)}
             رصيدكم السابق: ${format(bond.previousBalance)}
-            ${balanceLabel(bond.newBalance)}
+            الإجمالي بعد السند: ${format(bond.newBalance)}
         """.trimIndent()
-        val intent = Intent(Intent.ACTION_SENDTO).apply {
-            data = Uri.parse("smsto:${customer.mobile}")
-            putExtra("sms_body", text)
+        
+        val cleanMobile = customer.mobile.filter { it.isDigit() }
+        val url = "https://whatsapp.com{Uri.encode(text)}"
+        
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            data = Uri.parse(url)
             setPackage("com.whatsapp")
         }
-        runCatching { context.startActivity(intent) }.getOrElse {
-            context.startActivity(Intent.createChooser(intent, "إرسال عبر واتساب"))
+        
+        runCatching { 
+            context.startActivity(intent) 
+        }.getOrElse {
+            val backupIntent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+            context.startActivity(Intent.createChooser(backupIntent, "إرسال السند عبر واتساب"))
         }
     }
 
@@ -113,7 +129,6 @@ object PrintAndShare {
             socket.close()
         }
     }
-
     fun bondReceiptBytes(customer: CustomerEntity, bond: FinancialBondEntity): ByteArray {
         val receipt = """
             خمر نت
@@ -128,7 +143,7 @@ object PrintAndShare {
             البيان: ${bond.note.ifBlank { "بدون بيان" }}
             ------------------------------
             شكرًا لتعاملكم معنا
-
+            
         """.trimIndent()
         return runCatching { receipt.toByteArray(Charset.forName("CP864")) }
             .getOrElse { receipt.toByteArray(Charset.forName("windows-1256")) }
@@ -174,6 +189,7 @@ object PrintAndShare {
         context.startActivity(Intent.createChooser(intent, "مشاركة كشف الحساب"))
     }
 
+    // 3. دالة مشاركة كشف الحساب المطورة والمستقرة للواتساب
     fun shareStatementToWhatsapp(
         context: Context,
         customer: CustomerEntity,
@@ -183,18 +199,25 @@ object PrintAndShare {
             "${formatDate(it.createdAt)} - ${it.type} - ${signedAmountLabel(it.amount)} - ${balanceLabel(it.balanceAfter)}"
         }
         val text = """
-            عزيزي العميل ${customer.name}
-            كشف حسابكم
+            عميلنا العزيز: ${customer.name}
+            كشف حسابكم التفصيلي:
             ${summary.ifBlank { "لا توجد حركات مالية مسجلة" }}
-            ${balanceLabel(customer.balance)}
+            الإجمالي الحالي المتبقي: ${balanceLabel(customer.balance)}
         """.trimIndent()
-        val intent = Intent(Intent.ACTION_SENDTO).apply {
-            data = Uri.parse("smsto:${customer.mobile}")
-            putExtra("sms_body", text)
+        
+        val cleanMobile = customer.mobile.filter { it.isDigit() }
+        val url = "https://whatsapp.com{Uri.encode(text)}"
+        
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            data = Uri.parse(url)
             setPackage("com.whatsapp")
         }
-        runCatching { context.startActivity(intent) }.getOrElse {
-            context.startActivity(Intent.createChooser(intent, "إرسال كشف الحساب عبر واتساب"))
+        
+        runCatching { 
+            context.startActivity(intent) 
+        }.getOrElse {
+            val backupIntent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+            context.startActivity(Intent.createChooser(backupIntent, "إرسال كشف الحساب عبر"))
         }
     }
 
@@ -232,10 +255,12 @@ object PrintAndShare {
             }
             if (rows.isEmpty()) add("لا توجد حركات مالية مسجلة لهذا العميل")
         }
+
         var pageNumber = 1
         var page = document.startPage(PdfDocument.PageInfo.Builder(pageWidth, pageHeight, pageNumber).create())
         var canvas = page.canvas
         var y = margin.toFloat()
+        
         lines.forEachIndexed { index, line ->
             val currentPaint = if (index == 0) titlePaint else paint
             val layout = StaticLayout.Builder.obtain(line, 0, line.length, currentPaint, contentWidth)
@@ -243,7 +268,7 @@ object PrintAndShare {
                 .setTextDirection(TextDirectionHeuristics.RTL)
                 .setIncludePad(true)
                 .build()
-            if (y + layout.height > pageHeight - margin) {
+                if (y + layout.height > pageHeight - margin) {
                 document.finishPage(page)
                 pageNumber += 1
                 page = document.startPage(PdfDocument.PageInfo.Builder(pageWidth, pageHeight, pageNumber).create())
