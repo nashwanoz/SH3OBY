@@ -149,7 +149,6 @@ fun PosScreen(
                 shape = RoundedCornerShape(10.dp),
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
             ) { Text("آجل", fontSize = 12.sp, fontWeight = FontWeight.Bold) }
-            
             if (credit) {
                 Box(modifier = Modifier.weight(1f)) {
                     SearchChoiceField(
@@ -194,11 +193,11 @@ fun PosScreen(
                 }
             }
         }
+
         Spacer(Modifier.height(12.dp))
         Text("الأصناف السريعة", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White.copy(alpha = 0.9f))
         Spacer(Modifier.height(6.dp))
 
-        // شريط الكلمات المضغوطة للأصناف السريعة (LazyRow) لتوفير مساحة عمودية ضخمة
         LazyRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -216,7 +215,6 @@ fun PosScreen(
 
         Spacer(Modifier.height(10.dp))
 
-        // حقل البحث السريع عن صنف بالتصميم الزجاجي الفخم
         OutlinedTextField(
             value = productQuery,
             onValueChange = { productQuery = it },
@@ -285,8 +283,7 @@ fun PosScreen(
                 }
             }
         }
-
-                Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(12.dp))
 
         Row(
             Modifier.fillMaxWidth().padding(vertical = 8.dp),
@@ -316,19 +313,19 @@ fun PosScreen(
         ) { 
             Text("حفظ واعتماد الفاتورة", fontSize = 16.sp, fontWeight = FontWeight.Bold) 
         }
-    } // القوس 1: يغلق كتل الـ Column التابعة للشاشة
-    Spacer(Modifier.height(18.dp))
-} // القوس 2: يغلق دالة الـ PosScreen الرئيسية بالكامل ويحمي النطاق
+        Spacer(Modifier.height(18.dp))
+    }
 
-selectedProduct?.let { product ->
-    AddLineDialog(
-        product = product,
-        onDismiss = { selectedProduct = null },
-        onAdd = { unit, quantity ->
-            cart = cart + DraftSaleLine(product, unit, quantity)
-            selectedProduct = null
-        }
-    )
+    selectedProduct?.let { product ->
+        AddLineDialog(
+            product = product,
+            onDismiss = { selectedProduct = null },
+            onAdd = { unit, quantity ->
+                cart = cart + DraftSaleLine(product, unit, quantity)
+                selectedProduct = null
+            }
+        )
+    }
 }
 
 private data class DraftSaleLine(
