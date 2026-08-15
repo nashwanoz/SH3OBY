@@ -172,8 +172,8 @@ private fun LoadingScreen() {
 
 @Composable
 private fun LoginScreen(state: AppUiState, viewModel: AppViewModel) {
-    var userCode by rememberSaveable { mutableStateOf("") }
-    var password by rememberSaveable { mutableStateOf("") }
+    val userCode = state.userCodeInput
+    val password = state.passwordInput
     val focusManager = LocalFocusManager.current
     val passwordFocusRequester = remember { FocusRequester() }
     val login = {
@@ -208,7 +208,7 @@ private fun LoginScreen(state: AppUiState, viewModel: AppViewModel) {
                     Spacer(Modifier.height(28.dp))
                     OutlinedTextField(
                         value = userCode,
-                        onValueChange = { userCode = it.filter(Char::isDigit) },
+                        onValueChange = { viewModel.onLoginInputsChanged(it.filter(Char::isDigit), password) },
                         label = { Text("رقم المستخدم") },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
@@ -221,7 +221,7 @@ private fun LoginScreen(state: AppUiState, viewModel: AppViewModel) {
                     Spacer(Modifier.height(12.dp))
                     OutlinedTextField(
                         value = password,
-                        onValueChange = { password = it.filter(Char::isDigit) },
+                        onValueChange = { viewModel.onLoginInputsChanged(userCode, it.filter(Char::isDigit)) },
                         label = { Text("كلمة المرور") },
                         visualTransformation = PasswordVisualTransformation(),
                         modifier = Modifier.fillMaxWidth().focusRequester(passwordFocusRequester),
@@ -248,6 +248,7 @@ private fun LoginScreen(state: AppUiState, viewModel: AppViewModel) {
         }
     }
 }
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
