@@ -146,108 +146,196 @@ fun KhamrApp(viewModel: AppViewModel) {
 }
 
 @Composable
-private fun LoadingScreen() {
-    Box(
-        Modifier.fillMaxSize().imePadding().background(
-            Brush.verticalGradient(listOf(Color(0xFF102A43), Color(0xFF0F766E)))
-        ),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Image(
-                painter = painterResource(R.drawable.khamernet_logo),
-                contentDescription = "شعار خمر نت",
-                modifier = Modifier.size(104.dp),
-                contentScale = ContentScale.Fit
-            )
-            Spacer(Modifier.height(16.dp))
-            Text("خمر نت", color = Color.White, fontSize = 42.sp, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(10.dp))
-            Text("جاري تجهيز النظام محليًا…", color = Color.White.copy(alpha = .8f))
-            Spacer(Modifier.height(24.dp))
-            LinearProgressIndicator(color = Color(0xFFD99A2B))
-        }
-    }
-}
-
-@Composable
 private fun LoginScreen(state: AppUiState, viewModel: AppViewModel) {
     val userCode = state.userCodeInput
     val password = state.passwordInput
     val focusManager = LocalFocusManager.current
     val passwordFocusRequester = remember { FocusRequester() }
+    
+    // متغير للتحكم في إظهار وإخفاء كلمة المرور
+    var passwordVisible by rememberSaveable { mutableStateOf(false) }
+
     val login = {
         focusManager.clearFocus()
         viewModel.login(userCode, password)
     }
+
     Box(
-        Modifier.fillMaxSize().imePadding().background(
-            Brush.verticalGradient(listOf(Color(0xFF102A43), Color(0xFF0F766E)))
-        ),
+        Modifier
+            .fillMaxSize()
+            .imePadding()
+            .background(
+                Brush.radialGradient(
+                    colors = listOf(Color(0xFF1E3A8A), Color(0xFF0F172A)), // تدرج دائري فخم داكن
+                    radius = 1600f
+                )
+            ),
         contentAlignment = Alignment.Center
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(18.dp).verticalScroll(rememberScrollState()),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp)
+                .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            // الشعار بحجم متناسق مع التصميم الحديث
             Image(
                 painter = painterResource(R.drawable.khamernet_logo),
                 contentDescription = "شعار خمر نت",
-                modifier = Modifier.size(112.dp),
+                modifier = Modifier
+                    .size(120.dp)
+                    .clip(RoundedCornerShape(24.dp)),
                 contentScale = ContentScale.Fit
             )
-            Spacer(Modifier.height(12.dp))
-            Card(
-                modifier = Modifier.fillMaxWidth(.94f),
-                shape = RoundedCornerShape(28.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White)
+            
+            Spacer(Modifier.height(8.dp))
+            
+            Text(
+                text = "خمر نت",
+                fontSize = 32.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = Color.White,
+                letterSpacing = 1.sp
+            )
+            Text(
+                text = "نظام المبيعات والمخزون الذكي",
+                color = Color.White.copy(alpha = 0.6f),
+                fontSize = 14.sp
+            )
+
+            Spacer(Modifier.height(36.dp))
+
+            // حقل رقم المستخدم الحديث
+            OutlinedTextField(
+                value = userCode,
+                onValueChange = { viewModel.onLoginInputsChanged(it.filter(Char::isDigit), password) },
+                label = { Text("رقم المستخدم", color = Color.White.copy(alpha = 0.7f)) },
+                prefix = { Text("ID: ", color = Color(0xFFD99A2B), fontWeight = FontWeight.Bold) },
+                leadingIcon = { 
+                    Icon(
+                        imageVector = androidx.compose.material.icons.Icons.Default.People, 
+                        contentDescription = null,
+                        tint = Color(0xFFD99A2B)
+                    ) 
+                },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                shape = RoundedCornerShape(16.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = Color(0xFFD99A2B),
+                    unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    focusedContainerColor = Color.White.copy(alpha = 0.05f),
+                    unfocusedContainerColor = Color.White.copy(alpha = 0.02f)
+                ),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+                keyboardActions = KeyboardActions(
+                    onNext = { passwordFocusRequester.requestFocus() }
+                )
+            )
+
+            Spacer(Modifier.height(16.dp))
+
+            // حقل كلمة المرور الحديث مع ميزة إظهار/إخفاء النص
+            OutlinedTextField(
+                value = password,
+                onValueChange = { viewModel.onLoginInputsChanged(userCode, it.filter(Char::isDigit)) },
+                label = { Text("كلمة المرور", color = Color.White.copy(alpha = 0.7f)) },
+                leadingIcon = { 
+                    Icon(
+                        imageVector = androidx.compose.material.icons.Icons.Default.ReceiptLong, 
+                        contentDescription = null,
+                        tint = Color(0xFFD99A2B)
+                    ) 
+                },
+                trailingIcon = {
+                    val image = if (passwordVisible)
+                        androidx.compose.material.icons.Icons.Default.Assessment // بديل أيقونة العين المتاحة في الأيقونات الأساسية الافتراضية لديك
+                    else 
+                        androidx.compose.material.icons.Icons.Default.Inventory
+
+                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                        Icon(imageVector = image, contentDescription = "إظهار/إخفاء كلمة المرور", tint = Color.White.copy(alpha = 0.5f))
+                    }
+                },
+                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(passwordFocusRequester),
+                singleLine = true,
+                shape = RoundedCornerShape(16.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = Color(0xFFD99A2B),
+                    unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    focusedContainerColor = Color.White.copy(alpha = 0.05f),
+                    unfocusedContainerColor = Color.White.copy(alpha = 0.02f)
+                ),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword, imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(
+                    onDone = { if (userCode.isNotBlank() && password.isNotBlank()) login() }
+                )
+            )
+
+            Spacer(Modifier.height(32.dp))
+
+            // زر الدخول العصري باللون الذهبي الملكي
+            Button(
+                onClick = login,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                enabled = userCode.isNotBlank() && password.isNotBlank(),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFFD99A2B),
+                    contentColor = Color(0xFF0F172A),
+                    disabledContainerColor = Color.White.copy(alpha = 0.1f),
+                    disabledContentColor = Color.White.copy(alpha = 0.3f)
+                )
             ) {
-                Column(Modifier.padding(26.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("خمر نت", fontSize = 36.sp, fontWeight = FontWeight.Bold, color = Color(0xFF102A43))
-                    Text("نظام المبيعات والمخزون", color = Color(0xFF0F766E))
-                    Spacer(Modifier.height(28.dp))
-                    OutlinedTextField(
-                        value = userCode,
-                        onValueChange = { viewModel.onLoginInputsChanged(it.filter(Char::isDigit), password) },
-                        label = { Text("رقم المستخدم") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
-                        keyboardActions = KeyboardActions(
-                            onNext = { passwordFocusRequester.requestFocus() },
-                            onDone = { passwordFocusRequester.requestFocus() }
-                        )
-                    )
-                    Spacer(Modifier.height(12.dp))
-                    OutlinedTextField(
-                        value = password,
-                        onValueChange = { viewModel.onLoginInputsChanged(userCode, it.filter(Char::isDigit)) },
-                        label = { Text("كلمة المرور") },
-                        visualTransformation = PasswordVisualTransformation(),
-                        modifier = Modifier.fillMaxWidth().focusRequester(passwordFocusRequester),
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword, imeAction = ImeAction.Done),
-                        keyboardActions = KeyboardActions(
-                            onDone = { if (userCode.isNotBlank() && password.isNotBlank()) login() }
-                        )
-                    )
-                    Spacer(Modifier.height(22.dp))
-                    Button(onClick = login, modifier = Modifier.fillMaxWidth().height(52.dp), enabled = userCode.isNotBlank() && password.isNotBlank()) {
-                        Text("دخول")
-                    }
-                    Spacer(Modifier.height(18.dp))
-                    Text("الحساب الافتراضي: رقم المستخدم 1 / كلمة المرور 1", color = Color.Gray, fontSize = 12.sp)
-                    state.error?.let {
-                        Spacer(Modifier.height(12.dp))
-                        Text(it, color = MaterialTheme.colorScheme.error)
-                    }
-                }
+                Text("تسجيل الدخول", fontSize = 16.sp, fontWeight = FontWeight.Bold)
             }
-            Spacer(Modifier.height(18.dp))
-            Text("جميع الحقوق محفوظة Smart Link 2026", color = Color.White.copy(alpha = .86f), fontSize = 12.sp)
+
+            Spacer(Modifier.height(24.dp))
+
+            // تلميح الحساب الافتراضي مدمج بشكل خفيف وأنيق
+            Surface(
+                color = Color.White.copy(alpha = 0.05f),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text(
+                    text = "💡 الحساب الافتراضي: رقم المستخدم 1 / كلمة المرور 1",
+                    color = Color.White.copy(alpha = 0.5f),
+                    fontSize = 11.sp,
+                    modifier = Modifier.padding(horizontal = 12.co, vertical = 6.co)
+                )
+            }
+
+            // عرض رسائل الخطأ بتصميم متناسق وثابت
+            state.error?.let {
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    text = it,
+                    color = Color(0xFFEF4444),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+            
+            Spacer(Modifier.height(48.dp))
+            Text(
+                text = "جميع الحقوق محفوظة Smart Link 2026",
+                color = Color.White.copy(alpha = 0.3f),
+                fontSize = 11.sp
+            )
         }
     }
 }
+
 
 
 @OptIn(ExperimentalMaterial3Api::class)
