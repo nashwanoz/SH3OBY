@@ -41,36 +41,37 @@ fun DashboardScreen(state: AppUiState, onNavigate: (AppSection) -> Unit) {
     } else {
         listOf(AppSection.POS, AppSection.INVOICES, AppSection.REPORTS, AppSection.CUSTOMERS, AppSection.BONDS)
     }).filter { state.user?.canAccess(it.name) == true }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(18.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+        contentPadding = PaddingValues(14.dp), // تقليص الهامش الخارجي قليلاً لتوفير مساحة
+        verticalArrangement = Arrangement.spacedBy(10.dp) // تقليل المسافة بين الأجزاء الرئيسية
     ) {
         item {
             Card(
                 colors = CardDefaults.cardColors(containerColor = Color(0xFF102A43)),
-                shape = RoundedCornerShape(22.dp),
+                shape = RoundedCornerShape(18.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Column(Modifier.padding(22.dp)) {
-                    Text("أهلًا بك في خمر نت", color = Color.White, fontSize = 23.sp, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.height(5.dp))
-                    Text("كل عملياتك محفوظة محليًا وتستمر حتى دون اتصال.", color = Color.White.copy(alpha = .8f))
+                Column(Modifier.padding(16.dp)) { // تصغير الحواف الداخلية لكرت الترحيب
+                    Text("أهلًا بك في خمر نت", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(4.dp))
+                    Text("كل عملياتك محفوظة محليًا وتستمر حتى دون اتصال.", color = Color.White.copy(alpha = .8f), fontSize = 13.sp)
                 }
             }
         }
         item {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 StatCard("مبيعات اليوم", "%.2f".format(stats.todaySales), Color(0xFF0F766E), Modifier.weight(1f))
                 StatCard("العهدة / العجز", "%.2f".format(stats.carriedDifference), Color(0xFFD99A2B), Modifier.weight(1f))
             }
         }
         item {
-            Text("الوصول السريع", fontSize = 19.sp, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(10.dp))
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("الوصول السريع", fontSize = 17.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(6.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { // تقليل الفراغ العمودي بين صفوف الأزرار من 12 إلى 8
                 actions.chunked(2).forEach { rowItems ->
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) { // تقليل الفراغ الأفقي بين الأزرار من 12 إلى 8
                         rowItems.forEach { item ->
                             DashboardActionCard(item, Modifier.weight(1f)) { onNavigate(item) }
                         }
@@ -90,27 +91,39 @@ private fun DashboardActionCard(
 ) {
     Card(
         modifier = modifier.clickable(onClick = onClick),
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(14.dp), // حواف أنعم تتناسق مع الحجم المصغر الجديد
         colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
         Column(
-            Modifier.fillMaxWidth().padding(vertical = 20.dp, horizontal = 10.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+            Modifier
+                .fillMaxWidth()
+                .padding(vertical = 10.dp, horizontal = 8.dp), // تم ضغط الارتفاع الداخلي من 20 إلى 10 لتقليص المربع تماماً
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
-            Icon(section.icon, contentDescription = section.title, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(34.dp))
-            Spacer(Modifier.height(8.dp))
-            Text(section.title, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            Icon(
+                imageVector = section.icon, 
+                contentDescription = section.title, 
+                tint = MaterialTheme.colorScheme.primary, 
+                modifier = Modifier.size(24.dp) // تصغير حجم الأيقونة من 34 إلى 24 لتوفير مساحة عمودية ضخمة
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = section.title, 
+                fontWeight = FontWeight.Bold, 
+                fontSize = 12.sp // ضبط حجم الخط ليتناسق بشكل جذاب مع الحجم الجديد
+            )
         }
     }
 }
 
 @Composable
 private fun StatCard(title: String, value: String, color: Color, modifier: Modifier) {
-    Card(modifier, colors = CardDefaults.cardColors(containerColor = color), shape = RoundedCornerShape(18.dp)) {
-        Column(Modifier.padding(16.dp)) {
-            Text(title, color = Color.White.copy(alpha = .85f), fontSize = 12.sp)
-            Spacer(Modifier.height(7.dp))
-            Text(value, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+    Card(modifier, colors = CardDefaults.cardColors(containerColor = color), shape = RoundedCornerShape(16.dp)) {
+        Column(Modifier.padding(12.dp)) { // تصغير المسافة الداخلية للعدادات لتوفير مساحة طولية
+            Text(title, color = Color.White.copy(alpha = .85f), fontSize = 11.sp)
+            Spacer(Modifier.height(4.dp))
+            Text(value, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
