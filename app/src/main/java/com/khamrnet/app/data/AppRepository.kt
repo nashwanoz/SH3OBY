@@ -78,13 +78,13 @@ class AppRepository(private val context: Context) {
                     role = "ADMIN"
                 )
             )
-            db.warehouses().insert(WarehouseEntity(1, "المستودع الرئيسي", isMain = true))
+                        db.warehouses().insert(WarehouseEntity(1, "المستودع الرئيسي", isMain = true))
             db.cashBoxes().insert(CashBoxEntity(1, "الصندوق الرئيسي"))
-            seedProduct("كرت ابو 100", "629000000001", 90, "كرت", 60, 5400)
-            seedProduct("كرت ابو 200", "629000000002", 180, "كرت", 60, 10800)
-            seedProduct("كرت ابو 250", "629000000003", 225, "كرت", 60, 13500)
-            seedProduct("كرت ابو 300", "629000000004", 270, "كرت", 60, 16200)
-            seedProduct("كرت ابو 500", "629000000005", 450, "كرت", 60, 27000)
+            seedProduct("كرت ابو 100", "629000000001", 90.0, "كرت", 60, 5400.0)
+            seedProduct("كرت ابو 200", "629000000002", 180.0, "كرت", 60, 10800.0)
+            seedProduct("كرت ابو 250", "629000000003", 225.0, "كرت", 60, 13500.0)
+            seedProduct("كرت ابو 300", "629000000004", 270.0, "كرت", 60, 16200.0)
+            seedProduct("كرت ابو 500", "629000000005", 450.0, "كرت", 60, 27000.0)
             seedProduct("كرت قريبا", "629000000006", 4.0, "كرت", 12, 42.0)
             check(adminId > 0)
         }
@@ -93,13 +93,14 @@ class AppRepository(private val context: Context) {
     private suspend fun seedMissingProducts() {
         db.withTransaction {
             if (db.products().findByBarcode("629000000005") == null) {
-                seedProduct("كرت ابو 500", "629000000005", 450, "كرت", 60, 27000)
+                seedProduct("كرت ابو 500", "629000000005", 450.0, "كرت", 60, 27000.0)
             }
             if (db.products().findByBarcode("629000000006") == null) {
                 seedProduct("كرت قريبا", "629000000006", 4.0, "كرت", 12, 42.0)
             }
         }
     }
+
 
     private suspend fun seedProduct(
         name: String,
