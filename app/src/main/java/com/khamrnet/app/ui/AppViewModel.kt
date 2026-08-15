@@ -120,12 +120,14 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
     }
+
     fun onLoginInputsChanged(userCode: String, password: String) {
-    _state.value = _state.value.copy(
-        userCodeInput = userCode,
-        passwordInput = password
-    )
-}
+        _state.value = _state.value.copy(
+            userCodeInput = userCode,
+            passwordInput = password
+        )
+    }
+
 
 
     private fun observeUserData(userId: Long) {
