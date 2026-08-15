@@ -58,11 +58,12 @@ object PrintAndShare {
     // 2. دالة مشاركة السندات المطورة والمستقرة للواتساب
    fun whatsappBond(context: Context, customer: CustomerEntity, bond: FinancialBondEntity) {
     val text = """
-        عميلنا العزيز: ${customer.name}
-        ${if (bond.type == "قبض") "تم استلام سند قبض" else "تم تسجيل سند صرف"} رقم: ${bond.id}
-        مبلغ السند: ${format(bond.amount)}
-        رصيدكم السابق: ${format(bond.previousBalance)}
-        الإجمالي بعد السند: ${format(bond.newBalance)}
+        اشعار فاتورة مشتريات شبكة خمر نت
+        
+        عميلنا العزيز: ${customer?.name ?: "مبيعات نقدية"}
+        عليكم فاتورة مبيعات بمبلغ: ${format(invoice.total)} $
+        رصيدكم السابق: ${format(invoice.previousBalance)} $
+        الإجمالي بعد الفاتورة: ${format(invoice.newBalance)} $
     """.trimIndent()
 
     val cleanMobile = customer.mobile.filter { it.isDigit() }
