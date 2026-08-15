@@ -1,26 +1,32 @@
 package com.khamrnet.app.ui.screens
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -28,6 +34,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -40,12 +47,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.text.KeyboardOptions
 import com.khamrnet.app.data.CustomerEntity
 import com.khamrnet.app.data.ProductEntity
 import com.khamrnet.app.data.SaleLineInput
@@ -68,6 +75,7 @@ fun PosScreen(
     var selectedProduct by remember { mutableStateOf<ProductEntity?>(null) }
     var productQuery by rememberSaveable { mutableStateOf("") }
     var cart by remember { mutableStateOf<List<DraftSaleLine>>(emptyList()) }
+    
     val quickProducts = state.products.take(6)
     val searchResults = state.products.filter {
         productQuery.isNotBlank() && (
@@ -96,7 +104,11 @@ fun PosScreen(
     }
 
     Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 14.dp)
+        Modifier
+            .fillMaxSize()
+            .background(Brush.verticalGradient(listOf(Color(0xFF1E3A8A), Color(0xFF0F172A))))
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 14.dp)
     ) {
         Row(
             Modifier.fillMaxWidth().padding(vertical = 12.dp),
@@ -104,77 +116,124 @@ fun PosScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(Modifier.weight(1f)) {
-                Text("فاتورة مبيعات", fontSize = 21.sp, fontWeight = FontWeight.Bold)
+                Text("فاتورة مبيعات", fontSize = 21.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("الرقم: سيصدر عند الحفظ", color = Color.Gray, fontSize = 11.sp)
-                    Text("التاريخ: ${formatDate(System.currentTimeMillis())}", color = Color.Gray, fontSize = 11.sp)
+                    Text("الرقم: سيصدر عند الحفظ", color = Color.White.copy(alpha = 0.5f), fontSize = 11.sp)
+                    Text("التاريخ: ${formatDate(System.currentTimeMillis())}", color = Color.White.copy(alpha = 0.5f), fontSize = 11.sp)
                 }
             }
-            AssistChip(onClick = {}, label = { Text("${state.products.size} صنف") }, leadingIcon = {
-                Icon(Icons.Default.Inventory, contentDescription = null)
-            })
+            AssistChip(
+                onClick = {}, 
+                label = { Text("${state.products.size} صنف", color = Color.White) }, 
+                leadingIcon = { Icon(Icons.Default.Inventory, contentDescription = null, tint = Color(0xFFD99A2B)) },
+                colors = AssistChipDefaults.assistChipColors(containerColor = Color.White.copy(alpha = 0.05f)),
+                shape = RoundedCornerShape(8.dp)
+            )
         }
+
         Row(
             Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Button(onClick = { credit = false; customer = null }, enabled = credit) { Text("نقداً", fontSize = 12.sp) }
-            OutlinedButton(onClick = { credit = true }, enabled = !credit) { Text("آجل", fontSize = 12.sp) }
-            Text(
-                if (credit) "اسم العميل" else "العميل: مبيعات نقدية",
-                color = Color.Gray,
-                fontSize = 12.sp,
-                modifier = Modifier.weight(1f)
-            )
-        }
-        if (credit) {
-            Spacer(Modifier.height(6.dp))
-            SearchChoiceField(
-                label = "ابحث عن العميل",
-                selected = customer,
-                options = state.customers,
-                display = { it.name },
-                secondary = { "الرصيد الحالي: ${"%.2f".format(it.balance)}" },
-                onSelect = { customer = it }
-            )
-            customer?.let {
-                Row(
-                    Modifier.fillMaxWidth().padding(top = 2.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text("العميل: ${it.name}", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    Text(accountBalance(it.balance), fontSize = 12.sp, color = balanceColor(it.balance))
-                }
-            }
-        }
-        Spacer(Modifier.height(8.dp))
-        Text("الأصناف السريعة", fontSize = 16.sp, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(5.dp))
-        quickProducts.chunked(2).forEach { rowProducts ->
-            Row(
-                Modifier.fillMaxWidth().padding(bottom = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                rowProducts.forEach { product ->
-                    InvoiceProductCard(
-                        product = product,
-                        stock = state.stock[product.id] ?: 0,
-                        modifier = Modifier.weight(1f),
-                        onClick = { selectedProduct = product }
+            Button(
+                onClick = { credit = false; customer = null }, 
+                enabled = credit,
+                shape = RoundedCornerShape(10.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD99A2B), contentColor = Color(0xFF0F172A))
+            ) { Text("نقداً", fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+            
+            OutlinedButton(
+                onClick = { credit = true }, 
+                enabled = !credit,
+                shape = RoundedCornerShape(10.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
+            ) { Text("آجل", fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+            
+            if (credit) {
+                Box(modifier = Modifier.weight(1f)) {
+                    SearchChoiceField(
+                        label = "ابحث عن العميل",
+                        selected = customer,
+                        options = state.customers,
+                        display = { it.name },
+                        secondary = { "الرصيد: ${"%.2f".format(it.balance)}" },
+                        onSelect = { customer = it }
                     )
                 }
-                if (rowProducts.size == 1) Spacer(Modifier.weight(1f))
+            } else {
+                Spacer(Modifier.weight(1f))
             }
         }
+
+        Spacer(Modifier.height(8.dp))
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.04f))
+        ) {
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (credit) {
+                    Text(
+                        text = "العميل: ${customer?.name ?: "لم يتم اختيار عميل"}", 
+                        fontSize = 13.sp, 
+                        fontWeight = FontWeight.Bold,
+                        color = if (customer != null) Color(0xFFD99A2B) else Color.Red
+                    )
+                    customer?.let {
+                        Text(accountBalance(it.balance), fontSize = 13.sp, color = balanceColor(it.balance), fontWeight = FontWeight.Bold)
+                    }
+                } else {
+                    Text("العميل: عميل نقدي", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White.copy(alpha = 0.7f))
+                    Text("مبيعات نقدية", fontSize = 12.sp, color = Color.White.copy(alpha = 0.5f))
+                }
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+        Text("الأصناف السريعة", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White.copy(alpha = 0.9f))
+        Spacer(Modifier.height(6.dp))
+
+        // شريط الكلمات المضغوطة للأصناف السريعة (LazyRow) لتوفير مساحة عمودية ضخمة
+        LazyRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(vertical = 4.dp)
+        ) {
+            items(quickProducts, key = { it.id }) { product ->
+                AssistChip(
+                    onClick = { selectedProduct = product },
+                    label = { Text(text = product.name, fontSize = 12.sp, fontWeight = FontWeight.Medium, color = Color.White) },
+                    shape = RoundedCornerShape(8.dp),
+                    colors = AssistChipDefaults.assistChipColors(containerColor = Color.White.copy(alpha = 0.05f))
+                )
+            }
+        }
+
+        Spacer(Modifier.height(10.dp))
+
+        // حقل البحث السريع عن صنف بالتصميم الزجاجي الفخم
         OutlinedTextField(
             value = productQuery,
             onValueChange = { productQuery = it },
-            label = { Text("بحث سريع عن صنف") },
+            label = { Text("بحث سريع عن صنف", color = Color.White.copy(alpha = 0.6f)) },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
-            textStyle = MaterialTheme.typography.bodySmall
+            shape = RoundedCornerShape(12.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = Color(0xFFD99A2B),
+                unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
+                focusedTextColor = Color.White,
+                unfocusedTextColor = Color.White,
+                focusedContainerColor = Color.White.copy(alpha = 0.05f),
+                unfocusedContainerColor = Color.White.copy(alpha = 0.02f)
+            )
         )
+
         if (searchResults.isNotEmpty()) {
             Spacer(Modifier.height(8.dp))
             searchResults.forEach { product ->
@@ -183,72 +242,94 @@ fun PosScreen(
                         selectedProduct = product
                         productQuery = ""
                     },
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.08f))
                 ) {
                     Row(
                         Modifier.fillMaxWidth().padding(12.dp),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text(product.name, fontWeight = FontWeight.Bold)
-                        Text("${"%.2f".format(product.price)} / ${product.unitName}", color = MaterialTheme.colorScheme.primary)
+                        Text(product.name, fontWeight = FontWeight.Bold, color = Color.White)
+                        Text("${"%.2f".format(product.price)} / ${product.unitName}", color = Color(0xFFD99A2B))
                     }
                 }
             }
         }
+
         Spacer(Modifier.height(14.dp))
-        Text("أصناف الفاتورة", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        Text("أصناف الفاتورة", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White.copy(alpha = 0.9f))
+        
         if (cart.isEmpty()) {
-            Text("اضغط على أي صنف لإضافته إلى الفاتورة", color = Color.Gray, fontSize = 12.sp)
+            Text("اضغط على أي صنف لإضافته إلى الفاتورة", color = Color.White.copy(alpha = 0.4f), fontSize = 12.sp)
         } else {
             Spacer(Modifier.height(8.dp))
             cart.forEachIndexed { index, line ->
-                Card(Modifier.fillMaxWidth().padding(bottom = 8.dp), shape = RoundedCornerShape(14.dp)) {
+                Card(
+                    Modifier.fillMaxWidth().padding(bottom = 8.dp), 
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.04f))
+                ) {
                     Row(
                         Modifier.fillMaxWidth().padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(Modifier.weight(1f)) {
-                            Text(line.product.name, fontWeight = FontWeight.Bold)
-                            Text("${line.quantity} ${line.unitName} × ${"%.2f".format(line.unitPrice)}", color = Color.Gray, fontSize = 12.sp)
+                            Text(line.product.name, fontWeight = FontWeight.Bold, color = Color.White)
+                            Text("${line.quantity} ${line.unitName} × ${"%.2f".format(line.unitPrice)}", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp)
                         }
-                        Text("%.2f".format(line.lineTotal), fontWeight = FontWeight.Bold)
+                        Text("%.2f".format(line.lineTotal), fontWeight = FontWeight.Bold, color = Color.White)
                         IconButton(onClick = { cart = cart.toMutableList().also { it.removeAt(index) } }) {
-                            Icon(Icons.Default.Delete, contentDescription = "حذف الصنف")
+                            Icon(Icons.Default.Delete, contentDescription = "حذف الصنف", tint = Color(0xFFEF4444))
                         }
                     }
                 }
             }
-            Row(
-                Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text("الإجمالي", fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                Text("%.2f".format(invoiceTotal), fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-            }
-            Button(
-                onClick = {
-                    viewModel.sell(
-                        lines = cart.map { SaleLineInput(it.product.id, it.unitName, it.quantity) },
-                        customerId = customer?.id,
-                        credit = credit
-                    )
-                },
-                modifier = Modifier.fillMaxWidth().height(52.dp),
-                enabled = cart.isNotEmpty() && (!credit || customer != null)
-            ) { Text("حفظ واعتماد الفاتورة") }
         }
-        Spacer(Modifier.height(18.dp))
+
+        Spacer(Modifier.height(12.dp))
+
+        Row(
+            Modifier.fillMaxWidth().padding(vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text("الإجمالي", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
+            Text("%.2f".format(invoiceTotal), fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFFD99A2B))
+        }
+
+        Button(
+            onClick = {
+                viewModel.sell(
+                    lines = cart.map { SaleLineInput(it.product.id, it.unitName, it.quantity) },
+                    customerId = customer?.id,
+                    credit = credit
+                )
+            },
+            modifier = Modifier.fillMaxWidth().height(52.dp),
+            enabled = cart.isNotEmpty() && (!credit || customer != null),
+            shape = RoundedCornerShape(14.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFFD99A2B),
+                contentColor = Color(0xFF0F172A),
+                disabledContainerColor = Color.White.copy(alpha = 0.1f),
+                disabledContentColor = Color.White.copy(alpha = 0.3f)
+            )
+        ) { 
+            Text("حفظ واعتماد الفاتورة", fontSize = 16.sp, fontWeight = FontWeight.Bold) 
+        }
     }
-    selectedProduct?.let { product ->
-        AddLineDialog(
-            product = product,
-            onDismiss = { selectedProduct = null },
-            onAdd = { unit, quantity ->
-                cart = cart + DraftSaleLine(product, unit, quantity)
-                selectedProduct = null
-            }
-        )
-    }
+    Spacer(Modifier.height(18.dp))
+}
+
+selectedProduct?.let { product ->
+    AddLineDialog(
+        product = product,
+        onDismiss = { selectedProduct = null },
+        onAdd = { unit, quantity ->
+            cart = cart + DraftSaleLine(product, unit, quantity)
+            selectedProduct = null
+        }
+    )
+}
 }
 
 private data class DraftSaleLine(
@@ -260,34 +341,6 @@ private data class DraftSaleLine(
         get() = if (unitName == product.caseUnitName && product.casePrice > 0) product.casePrice else product.price
     val lineTotal: Double
         get() = unitPrice * quantity
-}
-
-@Composable
-private fun InvoiceProductCard(
-    product: ProductEntity,
-    stock: Int,
-    modifier: Modifier,
-    onClick: () -> Unit
-) {
-    Card(
-        modifier = modifier.height(98.dp).clickable(enabled = stock > 0, onClick = onClick),
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = if (stock > 0) Color.White else Color(0xFFF1E7E7))
-    ) {
-        Column(Modifier.fillMaxSize().padding(8.dp), verticalArrangement = Arrangement.SpaceBetween) {
-            Text(product.name, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text("${"%.2f".format(product.price)} / ${product.unitName}", color = MaterialTheme.colorScheme.primary, fontSize = 10.sp)
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("المتاح", color = Color.Gray, fontSize = 10.sp)
-                Text(
-                    if (stock > 0) "$stock" else "نفد",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 11.sp,
-                    color = if (stock > 0) Color(0xFF0F766E) else Color.Red
-                )
-            }
-        }
-    }
 }
 
 @Composable
@@ -310,10 +363,12 @@ private fun AddLineDialog(product: ProductEntity, onDismiss: () -> Unit, onAdd: 
                         onClick = { unit = product.unitName },
                         label = { Text(if (unit == product.unitName) "✓ ${product.unitName}" else product.unitName) }
                     )
-                    AssistChip(
-                        onClick = { unit = product.caseUnitName },
-                        label = { Text(if (unit == product.caseUnitName) "✓ ${product.caseUnitName}" else product.caseUnitName) }
-                    )
+                    if (product.caseUnitName.isNotBlank()) {
+                        AssistChip(
+                            onClick = { unit = product.caseUnitName },
+                            label = { Text(if (unit == product.caseUnitName) "✓ ${product.caseUnitName}" else product.caseUnitName) }
+                        )
+                    }
                 }
                 Text("سعر الوحدة: ${"%.2f".format(if (unit == product.caseUnitName) product.casePrice else product.price)}")
                 OutlinedTextField(
