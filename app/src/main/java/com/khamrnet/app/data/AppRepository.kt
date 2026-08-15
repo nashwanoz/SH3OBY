@@ -80,12 +80,12 @@ class AppRepository(private val context: Context) {
             )
             db.warehouses().insert(WarehouseEntity(1, "المستودع الرئيسي", isMain = true))
             db.cashBoxes().insert(CashBoxEntity(1, "الصندوق الرئيسي"))
-            seedProduct("ماء معدني", "629000000001", 1.0, "كرت", 60, 10.0)
-            seedProduct("عصير برتقال", "629000000002", 2.5, "كرت", 60, 50.0)
-            seedProduct("بسكويت", "629000000003", 1.5, "كرت", 60, 25.0)
-            seedProduct("مناديل ورقية", "629000000004", 3.0, "كرت", 60, 27.0)
-            seedProduct("مياه غازية", "629000000005", 1.5, "كرت", 24, 30.0)
-            seedProduct("حليب طويل الأجل", "629000000006", 4.0, "كرت", 12, 42.0)
+            seedProduct("كرت ابو 100", "629000000001", 1.0, "كرت", 60, 10.0)
+            seedProduct("كرت ابو 200", "629000000002", 2.5, "كرت", 60, 50.0)
+            seedProduct("كرت ابو 250", "629000000003", 1.5, "كرت", 60, 25.0)
+            seedProduct("كرت ابو 300", "629000000004", 3.0, "كرت", 60, 27.0)
+            seedProduct("كرت ابو 500", "629000000005", 1.5, "كرت", 24, 30.0)
+            seedProduct("كرت قريبا", "629000000006", 4.0, "كرت", 12, 42.0)
             check(adminId > 0)
         }
     }
@@ -93,10 +93,10 @@ class AppRepository(private val context: Context) {
     private suspend fun seedMissingProducts() {
         db.withTransaction {
             if (db.products().findByBarcode("629000000005") == null) {
-                seedProduct("مياه غازية", "629000000005", 1.5, "كرت", 24, 30.0)
+                seedProduct("كرت ابو 500", "629000000005", 1.5, "كرت", 24, 30.0)
             }
             if (db.products().findByBarcode("629000000006") == null) {
-                seedProduct("حليب طويل الأجل", "629000000006", 4.0, "كرت", 12, 42.0)
+                seedProduct("كرت قريبا", "629000000006", 4.0, "كرت", 12, 42.0)
             }
         }
     }
