@@ -39,6 +39,8 @@ data class BondReceipt(
 data class AppUiState(
     val ready: Boolean = false,
     val user: UserEntity? = null,
+    val userCodeInput: String = "",
+    val passwordInput: String = "",
     val products: List<ProductEntity> = emptyList(),
     val customers: List<CustomerEntity> = emptyList(),
     val users: List<UserEntity> = emptyList(),
@@ -53,6 +55,7 @@ data class AppUiState(
     val message: String? = null,
     val error: String? = null
 )
+
 
 
 class AppViewModel(application: Application) : AndroidViewModel(application) {
