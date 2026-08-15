@@ -25,13 +25,14 @@ object PrintAndShare {
     
     // 1. دالة مشاركة الفاتورة المطورة والمستقرة للواتساب
     fun whatsapp(context: Context, customer: CustomerEntity?, invoice: InvoiceEntity) {
-    val text = """
+        val text = """
+        اشعار فاتورة مبيعات ( شبكه خمر نت اللاسلكيه )
+        
         عميلنا العزيز: ${customer?.name ?: "مبيعات نقدية"}
-        عليكم فاتورة مبيعات بمبلغ: ${format(invoice.total)}
-        رصيدكم السابق: ${format(invoice.previousBalance)}
-        الإجمالي بعد الفاتورة: ${format(invoice.newBalance)}
+        عليكم فاتورة مبيعات بمبلغ: ${invoice.total.toInt()}
+        رصيدكم السابق: ${invoice.previousBalance.toInt()}
+        الإجمالي بعد الفاتورة: ${invoice.newBalance.toInt()}
     """.trimIndent()
-
     val cleanMobile = customer?.mobile?.filter { it.isDigit() }.orEmpty()
     
     // إصلاح صياغة الرابط وتشفير النص وإضافة الرقم إن وجد
