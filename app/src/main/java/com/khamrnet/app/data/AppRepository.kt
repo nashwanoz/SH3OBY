@@ -93,7 +93,7 @@ class AppRepository(private val context: Context) {
     private suspend fun seedMissingProducts() {
         db.withTransaction {
             if (db.products().findByBarcode("629000000005") == null) {
-                seedProduct("كرت ابو 500", "629000000005", 1.5, "كرت", 24, 30.0)
+                seedProduct("كرت ابو 500", "629000000005", 450, "كرت", 60, 27000)
             }
             if (db.products().findByBarcode("629000000006") == null) {
                 seedProduct("كرت قريبا", "629000000006", 4.0, "كرت", 12, 42.0)
