@@ -25,55 +25,68 @@ object PrintAndShare {
     
     // 1. دالة مشاركة الفاتورة المطورة والمستقرة للواتساب
     fun whatsapp(context: Context, customer: CustomerEntity?, invoice: InvoiceEntity) {
-        val text = """
-            عميلنا العزيز: ${customer?.name ?: "مبيعات نقدية"}
-            عليكم فاتورة مبيعات بمبلغ: ${format(invoice.total)}
-            رصيدكم السابق: ${format(invoice.previousBalance)}
-            الإجمالي بعد الفاتورة: ${format(invoice.newBalance)}
-        """.trimIndent()
-        
-        val cleanMobile = customer?.mobile?.filter { it.isDigit() }.orEmpty()
-        val url = "https://whatsapp.com{Uri.encode(text)}"
-        
-        val intent = Intent(Intent.ACTION_VIEW).apply {
-            data = Uri.parse(url)
-            setPackage("com.whatsapp")
-        }
-        
-        runCatching { 
-            context.startActivity(intent) 
-        }.getOrElse {
-            val backupIntent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-            context.startActivity(Intent.createChooser(backupIntent, "مشاركة الفاتورة عبر"))
-        }
+    val text = """
+        عميلنا العزيز: ${customer?.name ?: "مبيعات نقدية"}
+        عليكم فاتورة مبيعات بمبلغ: ${format(invoice.total)}
+        رصيدكم السابق: ${format(invoice.previousBalance)}
+        الإجمالي بعد الفاتورة: ${format(invoice.newBalance)}
+    """.trimIndent()
+
+    val cleanMobile = customer?.mobile?.filter { it.isDigit() }.orEmpty()
+    
+    // إصلاح صياغة الرابط وتشفير النص وإضافة الرقم إن وجد
+    val encodedText = Uri.encode(text)
+    val url = if (cleanMobile.isNotEmpty()) {
+        "https://api.whatsapp.com/send?phone=$cleanMobile&text=$encodedText"
+    } else {
+        "https://api.whatsapp.com/send?text=$encodedText"
     }
+
+    val intent = Intent(Intent.ACTION_VIEW).apply {
+        data = Uri.parse(url)
+        setPackage("com.whatsapp")
+    }
+
+    runCatching { 
+        context.startActivity(intent) 
+    }.getOrElse {
+        val backupIntent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+        context.startActivity(Intent.createChooser(backupIntent, "مشاركة الفاتورة عبر"))
+    }
+}
 
     // 2. دالة مشاركة السندات المطورة والمستقرة للواتساب
-    fun whatsappBond(context: Context, customer: CustomerEntity, bond: FinancialBondEntity) {
-        val text = """
-            عميلنا العزيز: ${customer.name}
-            ${if (bond.type == "قبض") "تم استلام سند قبض" else "تم تسجيل سند صرف"} رقم: ${bond.id}
-            مبلغ السند: ${format(bond.amount)}
-            رصيدكم السابق: ${format(bond.previousBalance)}
-            الإجمالي بعد السند: ${format(bond.newBalance)}
-        """.trimIndent()
-        
-        val cleanMobile = customer.mobile.filter { it.isDigit() }
-        val url = "https://whatsapp.com{Uri.encode(text)}"
-        
-        val intent = Intent(Intent.ACTION_VIEW).apply {
-            data = Uri.parse(url)
-            setPackage("com.whatsapp")
-        }
-        
-        runCatching { 
-            context.startActivity(intent) 
-        }.getOrElse {
-            val backupIntent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-            context.startActivity(Intent.createChooser(backupIntent, "إرسال السند عبر واتساب"))
-        }
+   fun whatsappBond(context: Context, customer: CustomerEntity, bond: FinancialBondEntity) {
+    val text = """
+        عميلنا العزيز: ${customer.name}
+        ${if (bond.type == "قبض") "تم استلام سند قبض" else "تم تسجيل سند صرف"} رقم: ${bond.id}
+        مبلغ السند: ${format(bond.amount)}
+        رصيدكم السابق: ${format(bond.previousBalance)}
+        الإجمالي بعد السند: ${format(bond.newBalance)}
+    """.trimIndent()
+
+    val cleanMobile = customer.mobile.filter { it.isDigit() }
+    val encodedText = Uri.encode(text)
+
+    // صياغة الرابط الصحيحة وتأمين حالة وجود رقم الهاتف أو عدمه
+    val url = if (cleanMobile.isNotEmpty()) {
+        "https://api.whatsapp.com/send?phone=$cleanMobile&text=$encodedText"
+    } else {
+        "https://api.whatsapp.com/send?text=$encodedText"
     }
 
+    val intent = Intent(Intent.ACTION_VIEW).apply {
+        data = Uri.parse(url)
+        setPackage("com.whatsapp")
+    }
+
+    runCatching { 
+        context.startActivity(intent) 
+    }.getOrElse {
+        val backupIntent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+        context.startActivity(Intent.createChooser(backupIntent, "إرسال السند عبر واتساب"))
+    }
+}
     fun receiptBytes(
         invoice: InvoiceEntity,
         customerName: String = "مبيعات نقدية",
