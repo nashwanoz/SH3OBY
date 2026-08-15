@@ -88,6 +88,62 @@ import com.khamrnet.app.ui.screens.SettlementsScreen
 import com.khamrnet.app.ui.screens.TransfersScreen
 import com.khamrnet.app.ui.screens.UsersScreen
 
+@Composable
+fun KhamrApp(viewModel: AppViewModel) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
+    var showExitConfirmation by rememberSaveable { mutableStateOf(false) }
+    var lastBackPressAt by rememberSaveable { mutableStateOf(0L) }
+
+    BackHandler(enabled = !showExitConfirmation) {
+        val now = System.currentTimeMillis()
+        if (now - lastBackPressAt < 2_000L) {
+            lastBackPressAt = 0L
+            showExitConfirmation = true
+        } else {
+            lastBackPressAt = now
+            Toast.makeText(context, "اضغط رجوع مرة أخرى للخروج", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    LaunchedEffect(state.message, state.error) {
+        (state.message ?: state.error)?.let { snackbarHostState.showSnackbar(it) }
+        viewModel.clearMessage()
+    }
+    when {
+        !state.ready -> LoadingScreen()
+        state.user == null -> LoginScreen(state, viewModel)
+        else -> MainShell(state, viewModel, snackbarHostState)
+    }
+    state.saleReceipt?.let { receipt ->
+        SaleReceiptDialog(
+            receipt = receipt,
+            canWhatsapp = state.user?.role == "ADMIN" || state.user?.canWhatsapp == true,
+            onDismiss = viewModel::clearSaleReceipt
+        )
+    }
+    state.bondReceipt?.let { receipt ->
+        BondReceiptDialog(
+            receipt = receipt,
+            canWhatsapp = state.user?.role == "ADMIN" || state.user?.canWhatsapp == true,
+            onDismiss = viewModel::clearBondReceipt
+        )
+    }
+    if (showExitConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showExitConfirmation = false },
+            title = { Text("الخروج من التطبيق") },
+            text = { Text("هل تريد الخروج من التطبيق؟") },
+            confirmButton = {
+                TextButton(onClick = { (context as? Activity)?.finish() }) { Text("خروج") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showExitConfirmation = false }) { Text("إلغاء") }
+            }
+        )
+    }
+}
 
 @Composable
 private fun LoadingScreen() {
