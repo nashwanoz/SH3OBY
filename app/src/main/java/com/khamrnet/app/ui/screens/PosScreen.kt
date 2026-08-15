@@ -286,7 +286,7 @@ fun PosScreen(
             }
         }
 
-        Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(12.dp))
 
         Row(
             Modifier.fillMaxWidth().padding(vertical = 8.dp),
@@ -316,9 +316,9 @@ fun PosScreen(
         ) { 
             Text("حفظ واعتماد الفاتورة", fontSize = 16.sp, fontWeight = FontWeight.Bold) 
         }
-    }
+    } // القوس 1: يغلق كتل الـ Column التابعة للشاشة
     Spacer(Modifier.height(18.dp))
-}
+} // القوس 2: يغلق دالة الـ PosScreen الرئيسية بالكامل ويحمي النطاق
 
 selectedProduct?.let { product ->
     AddLineDialog(
