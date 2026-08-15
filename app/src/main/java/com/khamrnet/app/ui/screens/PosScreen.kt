@@ -330,7 +330,6 @@ selectedProduct?.let { product ->
         }
     )
 }
-}
 
 private data class DraftSaleLine(
     val product: ProductEntity,
